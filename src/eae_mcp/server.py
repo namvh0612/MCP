@@ -42,7 +42,7 @@ def create_server(config: Config | None = None) -> MCPServer:
     def run(fn, *args, **kwargs):
         try:
             return fn(*args, **kwargs)
-        except (services.NotFound, safety.AccessDenied, FileNotFoundError) as e:
+        except (services.NotFound, LookupError, PermissionError, FileNotFoundError) as e:
             raise ToolError(str(e)) from e
 
     def sol(solution: str | None):
@@ -142,6 +142,17 @@ def create_server(config: Config | None = None) -> MCPServer:
         name: one canvas/symbol (default: all canvases); technology: hmi | ehmi; level: ISA-101 display
         level 1-4 of the reviewed display(s) for density/trend rules. Background: eae_knowledge 'hmi design'."""
         return run(services.hmi_review, sol(solution), ws, name, technology, level)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
+                                          openWorldHint=True))
+    def eae_http_probe(url: str, method: str = "GET", token: str | None = None, auth: str = "bearer",
+                       headers: dict[str, str] | None = None) -> dict:
+        """Call a REST API once from this machine (GET/HEAD only) to check it before generating an EAE
+        client with eae_rest_client_create: status, size versus the client's 4 KB buffer, and JSON fields
+        with the path/occurrence/type the generated extractor needs. Must be enabled in eae-mcp.toml
+        ([http_probe] enabled, allowed_hosts). The token is used for this call only and never returned."""
+        from .rest_probe import probe
+        return run(probe, ws.config, url, method, token, auth, headers)
 
     @mcp.tool(annotations=READ_ONLY)
     def eae_search(text: str, limit: int = 50, solution: str | None = None) -> list[dict]:

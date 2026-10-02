@@ -15,8 +15,10 @@ Generic FBs (`VALFORMAT_8708B18B173C5ABA`, …) are instances of parameterised l
 
 from __future__ import annotations
 
+import json
 import re
 from collections import Counter, defaultdict
+from pathlib import Path
 
 from ..model import Interface, TypeDef
 from .solution import Solution
@@ -234,10 +236,28 @@ def generic_registry(sol: Solution) -> list[dict]:
     return sorted(reg.values(), key=lambda e: (e["base"], -e["uses"]))
 
 
+KNOWN_GENERICS = Path(__file__).resolve().parent.parent / "knowledge" / "generic_types.json"
+
+
+def known_generics() -> dict[str, dict]:
+    """Generic types learned from sample solutions (scripts/build_generic_table.py); usable in any solution
+    because EAE derives the concrete type from the parameter string at build time."""
+    try:
+        return json.loads(KNOWN_GENERICS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 def find_generic(sol: Solution, base: str, params: str | None = None) -> list[dict]:
-    """Concrete generic types for a template, optionally with exactly these parameters."""
+    """Concrete generic types for a template, optionally with exactly these parameters (solution first,
+    then the built-in table)."""
     base = base.upper()
     out = [g for g in generic_registry(sol) if g["base"] == base]
+    seen = {g["type"] for g in out}
+    for type_name, k in known_generics().items():
+        if k["base"] == base and type_name not in seen:
+            out.append({"base": base, "type": type_name, "namespace": "Main", "params": k["params"],
+                        **parse_generic_params(k["params"]), "uses": 0, "used_in": [], "known": True})
     if params:
         norm = params.replace(" ", "")
         out = [g for g in out if g["params"].replace(" ", "") == norm or
@@ -276,6 +296,9 @@ def _expand(spec: dict) -> dict[str, str]:
     counts = spec.get("counts", {})
     for pattern, types in spec.get("pins", {}).items():
         m = re.search(r"\$\{(\w+)\}", pattern)
+        if m is None and len(types) == 1:
+            out[pattern] = types[0]  # fixed pin such as SD:STRING
+            continue
         if not m or "," in m.group(1):
             continue
         n = counts.get(m.group(1), len(types))
@@ -300,11 +323,19 @@ def generic_typedef(sol: Solution, type_name: str, namespace: str | None = None)
                     params[inst.type] |= {k.lstrip("$") for k in inst.parameters}
         cache["params"] = params
     entries = [g for g in cache["registry"] if g["type"] == type_name]
+    known = known_generics().get(type_name)
+    if not entries and known:
+        entries = [{"base": known["base"], "type": type_name, "namespace": namespace or "Main",
+                    "params": known["params"], **parse_generic_params(known["params"])}]
     if not entries:
         return None
     entry = next((g for g in entries if g["namespace"] == namespace), entries[0])
     types = _expand(entry)
     pins = dict(cache["pins"].get(type_name, {}))
+    for pin, spec in (known or {}).get("pins", {}).items():
+        pins.setdefault(pin, (spec[0], spec[1]))
+        if len(spec) > 2:
+            types.setdefault(pin, spec[2])
     for p in cache["params"].get(type_name, set()):
         pins.setdefault(p, ("data", "in"))
     from ..model import Event, Var

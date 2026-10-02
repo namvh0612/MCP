@@ -20,6 +20,8 @@ class Config:
     http_host: str = "127.0.0.1"
     http_port: int = 8765
     allow_write: bool = False  # write tools refuse to touch disk unless this is set
+    http_probe: bool = False  # eae_http_probe may call external REST APIs (GET/HEAD only)
+    http_probe_hosts: list[str] = field(default_factory=list)  # allowed host names; empty = none
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> "Config":
@@ -36,6 +38,9 @@ class Config:
                 cfg.catalog_file = Path(eae["catalog_file"])
             cfg.eae_version = str(eae.get("version", cfg.eae_version))
             cfg.transport = server.get("transport", cfg.transport)
+            probe = data.get("http_probe", {})
+            cfg.http_probe = bool(probe.get("enabled", False))
+            cfg.http_probe_hosts = [str(h).lower() for h in probe.get("allowed_hosts", [])]
             bind = server.get("http_bind")
             if bind and ":" in bind:
                 host, port = bind.rsplit(":", 1)

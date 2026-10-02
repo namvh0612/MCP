@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from . import services
 from .model import Algorithm, DataTypeDef, ECAction, ECState, ECTransition, EnumValue, Event, Interface, Var
 from .hmi import dotnet_edit, ehmi_edit
-from .project import cat_edit, edit, network_edit, opcua_edit
+from .project import cat_edit, edit, network_edit, opcua_edit, rest_client
 
 CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 MODIFY = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
@@ -29,6 +29,13 @@ class VarSpec(BaseModel):
     def to_model(self) -> Var:
         return Var(self.name, self.type, initial_value=self.initial_value, array_size=self.array_size,
                    comment=self.comment, namespace=self.namespace)
+
+
+class RestFieldSpec(BaseModel):
+    name: str = Field(description="Output/HMI variable name")
+    path: str = Field(description="Dotted JSON keys, e.g. 'price' or 'data.price'")
+    type: str = Field("REAL", description="REAL, LREAL, DINT, INT, BOOL or STRING")
+    occurrence: int = Field(1, description="n-th match of the last key (arrays of objects)")
 
 
 class EventSpec(BaseModel):
@@ -270,6 +277,28 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         hmi = _interface(hmi_event_inputs, hmi_event_outputs, hmi_input_vars, hmi_output_vars)
         return change(solution, lambda s: cat_edit.create_cat(s, name, itf, hmi, symbol, web_symbol or None, folder,
                                                               library, comment), dry_run)
+
+    # -- REST clients -----------------------------------------------------------------------------
+
+    @mcp.tool(annotations=CREATE)
+    def eae_rest_client_create(name: str, host: str, path: str, fields: list[RestFieldSpec], method: str = "GET",
+                               port: int = 443, tls: bool = True, auth: Literal["bearer", "none"] | str = "bearer",
+                               headers: dict[str, str] | None = None, body: str | None = None,
+                               period: str = "T#5m", endpoint: str | None = None, folder: str | None = ".RestApi",
+                               library: str | None = None, dry_run: bool = True,
+                               solution: str | None = None) -> dict:
+        """Generate a REST/HTTP client CAT (pattern of SolarPlantDemo ElectricPriceUpdate): a CAT `name`
+        with INIT(QI, Token, Endpoint)/REQ -> CNF(Status, fields…) and an HMI interface, plus
+        <name>_Request (builds the HTTP request), <name>_Response (status, Content-Length/chunked, JSON
+        fields), function <name>_Json, NETIO (TLS socket), E_CYCLE polling every `period` and E_PERMIT.
+        fields: [{name, path (dotted JSON keys), type REAL|LREAL|DINT|INT|BOOL|STRING, occurrence}] — run
+        eae_http_probe first to get them. auth: bearer | none | header:<Name>; the token is a CAT input set
+        at runtime, never written into files. Answers must fit in 4 KB (narrow the query)."""
+        spec = rest_client.RestClientSpec(
+            name=name, host=host, path=path, method=method, port=port, tls=tls, headers=headers or {}, body=body,
+            auth=auth, fields=[rest_client.RestField(f.name, f.path, f.type.upper(), f.occurrence) for f in fields],
+            period=period, endpoint=endpoint, folder=folder, library=library)
+        return change(solution, lambda s: rest_client.create_rest_client(s, spec), dry_run)
 
     # -- M4: eHMI canvases ------------------------------------------------------------------------
 

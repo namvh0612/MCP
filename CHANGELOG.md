@@ -7,6 +7,10 @@
   knowledge docs `standard-library` (IEC 61499 E_*, EAE runtime blocks, generic templates, path macros) and
   an expanded `function`. Parser now keeps VAR_IN_OUT and variable type namespaces.
 - **Functions:** `eae_function_create` / `eae_function_update` (identical to EAE 26 output).
+- **REST clients:** knowledge `rest-client` (SolarPlantDemo ElectricPriceUpdate analysed),
+  `eae_rest_client_create` (generated CAT + FBs + function, ST verified with a simulator in tests),
+  `eae_http_probe` (opt-in, GET/HEAD, allowed hosts only, token never returned); built-in table of generic FB
+  types (`knowledge/generic_types.json`) so NETIO etc. can be added to any solution.
 - **HMI design:** knowledge doc `hmi-design` (Endsley SA, ISA-101 hierarchy, High Performance HMI, ISA-18.2),
   `eae_hmi_review` (HP-01…10, NAV-01…03, ALM-01…05 + manual checks), prompt `design_hmi_sa`.
 

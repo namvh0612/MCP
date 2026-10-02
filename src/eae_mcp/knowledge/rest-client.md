@@ -44,9 +44,18 @@ Exchange: `INIT` (QI=TRUE) opens → `INITO`/`QO`; `REQ` sends `SD`; each `IND` 
   Subtracting `T#15m` from `CURRENT_DT()` before `SPLIT_DT` avoids both.
 - No retry/backoff beyond the 5-minute cycle; HTTP status ≥ 300 just yields no data.
 
-## Making a new REST client
+## Making a new REST client with eae-mcp
 
-Reuse the network: DNSHostQuery → a request builder (Basic FB with the request text) → NETIO
-(reuse `NETIO_16308C75BF8BAF741`, i.e. `eae_net_add_fb type="NETIO" generic_params="Runtime.IoCommon#I:=1;SD:STRING;RD:STRING"`)
-→ a response handler (copy PackageHandler's header/chunk logic, replace the JSON part) → outputs via an
-adapter and IThis. Keep timing in E_CYCLE/E_DELAY, never in loops.
+1. `eae_http_probe url=… token=…` (enable `[http_probe]` in eae-mcp.toml for that host): checks status,
+   size against the 4 KB buffer and lists JSON fields with the `path`/`occurrence`/`type` to extract.
+2. `eae_rest_client_create name=… host=… path=… fields=[…] period=T#5m` (dry run first) generates:
+   CAT `<name>` (INIT(QI, Token, Endpoint)/REQ → CNF(Status, fields) + IThis HMI interface, folder
+   `.RestApi`), `<name>_Request`, `<name>_Response`, function `<name>_Json`, NETIO (TLS, SNI), E_CYCLE,
+   E_PERMIT — the network of the sample, with standard ECC branching instead of EventVariables.
+3. Set `Token` at runtime (never in the type), `Endpoint` to `'TCPS:;<ip>:443'` if NETIO needs an IP, map
+   the instance and build. The generated ST is exercised in tests by an ST simulator (chunked and
+   Content-Length answers split into NETIO-sized pieces), but it still needs one compile/run in EAE.
+
+Extraction rule (`<name>_Json`): each dotted key is searched after the previous one; `occurrence` picks the
+n-th match of the last key, so `price` + occurrence 2 reads the second `"price"` in the body. Strings are
+returned without quotes (≤ 255 chars); numbers are converted with STRING_TO_REAL/DINT/INT.
