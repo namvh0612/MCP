@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from . import services
 from .model import Algorithm, DataTypeDef, ECAction, ECState, ECTransition, EnumValue, Event, Interface, Var
-from .hmi import dotnet_edit, ehmi_edit
+from .hmi import dotnet_edit, ehmi_edit, sa_builder, sa_tools
 from .project import cat_edit, edit, network_edit, opcua_edit, rest_client
 
 CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
@@ -29,6 +29,32 @@ class VarSpec(BaseModel):
     def to_model(self) -> Var:
         return Var(self.name, self.type, initial_value=self.initial_value, array_size=self.array_size,
                    comment=self.comment, namespace=self.namespace)
+
+
+class HmiElementSpec(BaseModel):
+    kind: Literal["value", "state", "alarm", "text"]
+    var: str = Field(description="Input variable of the CAT's HMI interface (IThis)")
+    label: str | None = None
+    unit: str | None = None
+    range: list[float] | None = Field(None, description="[low, high] span of the analog indicator")
+    normal: list[float] | None = Field(None, description="[low, high] normal operating range (shaded band)")
+    limits: list[float | None] | None = Field(None, description="[low alarm, high alarm]; null for none")
+    priority: int = Field(2, description="Alarm priority 1 (critical) .. 4 (low) used for abnormal display")
+    states: dict[str, str] | None = Field(None, description="value -> text, BOOL uses 'true'/'false'")
+    abnormal: list[str] | None = Field(None, description="state values shown as abnormal")
+
+    def to_model(self) -> "sa_builder.ElementSpec":
+        return sa_builder.ElementSpec(self.kind, self.var, self.label, self.unit,
+                                      tuple(self.range) if self.range else None,
+                                      tuple(self.normal) if self.normal else None,
+                                      tuple(self.limits) if self.limits else None, self.priority,
+                                      dict(self.states or {}), list(self.abnormal or []))
+
+
+class HmiSectionSpec(BaseModel):
+    title: str
+    instances: list[str] = Field(description="Application instance names (CATs)")
+    columns: int = 0
 
 
 class RestFieldSpec(BaseModel):
@@ -351,6 +377,38 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         EAE. path: <application instance>[.<inner FB>...].<variable>, e.g. 'CAT1.IThis.OUT1'. Written
         to the application layer and to every resource the instance is mapped to."""
         return change(solution, lambda s: opcua_edit.set_exposed(s, path, exposed, application), dry_run)
+
+    # -- SA HMI generation ---------------------------------------------------------------------------
+
+    @mcp.tool(annotations=CREATE)
+    def eae_hmi_symbol_build(cat: str, title: str, elements: list[HmiElementSpec],
+                             technology: Literal["hmi", "ehmi", "both"] = "both", width: int = 240,
+                             symbol: str = "sSA", web_symbol: str = "seSA", overwrite: bool = False,
+                             dry_run: bool = True, solution: str | None = None) -> dict:
+        """Draw a situation-awareness symbol for a CAT (.NET HMI and/or eHMI) from a design, following
+        ISA-101 / High Performance HMI: gray card, title, live values with units and a moving analog
+        indicator (span, shaded normal band, alarm-limit ticks, pointer that turns to the priority color
+        only when outside the limits), state texts with abnormal states highlighted at runtime, and alarm
+        indicators with color + shape + priority number (hidden when no alarm).
+        elements bind to the CAT's HMI interface inputs (add them first with eae_fb_update_interface on
+        <Cat>_HMI). The result is generated code (Designer + C# / JSON + TypeScript) that must pass
+        eae_hmi_review; existing symbols are only replaced with overwrite=true."""
+        design = sa_builder.SymbolDesign(title, [e.to_model() for e in elements], width)
+        return change(solution, lambda s: sa_tools.build_symbol(s, cat, design, technology, symbol, web_symbol,
+                                                                overwrite), dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_hmi_display_build(canvas: str, title: str, sections: list[HmiSectionSpec], level: int = 2,
+                              technology: Literal["hmi", "ehmi"] = "hmi", device: str | None = None,
+                              symbol: str | None = None, replace: bool = False, dry_run: bool = True,
+                              solution: str | None = None) -> dict:
+        """Lay out an operating display (ISA-101 level 1-4): creates the canvas if needed (eHMI: pass
+        device), adds a title, one gray framed group per section and places each CAT instance with its
+        SA symbol (sSA/seSA, else the CAT's first symbol) in a grid. Warns when the display is too dense
+        for its level or does not fit; the result must pass eae_hmi_review. Run once per technology."""
+        design = sa_tools.DisplayDesign(canvas, title, [sa_tools.SectionDesign(x.title, x.instances, x.columns)
+                                                        for x in sections], level, symbol, device, replace)
+        return change(solution, lambda s: sa_tools.build_display(s, design, technology), dry_run)
 
     # -- M5: .NET HMI canvases -------------------------------------------------------------------
 

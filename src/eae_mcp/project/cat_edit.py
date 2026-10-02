@@ -398,7 +398,7 @@ def _project_at(sol: Solution, kind: str, directory: str):
 
 
 def add_symbol(sol: Solution, cat_name: str, name: str, technology: str = "hmi", faceplate: bool = False,
-               now: _dt.datetime | None = None) -> ChangeSet:
+               now: _dt.datetime | None = None, cs: ChangeSet | None = None) -> ChangeSet:
     """Add a .NET HMI symbol or faceplate (technology='hmi') or an eHMI symbol ('ehmi') to a CAT."""
     import os
 
@@ -422,7 +422,7 @@ def add_symbol(sol: Solution, cat_name: str, name: str, technology: str = "hmi",
     proj_dir = cat.cfg_file.rsplit("/", 2)[0]
     parent = proj_dir.rsplit("/", 1)[0] + "/" if "/" in proj_dir else ""
     n = td.name
-    cs = ChangeSet(sol.root, f"add {'faceplate' if faceplate else technology + ' symbol'} {name} to CAT {n}")
+    cs = cs or ChangeSet(sol.root, f"add {'faceplate' if faceplate else technology + ' symbol'} {name} to CAT {n}")
     cfg = cs.doc(cat.cfg_file)
     root = cfg.root
     kids = children(root, "HMIInterface")
