@@ -33,7 +33,6 @@ diff first; confirm to write. Do the steps in order.
 | D8 | Create .NET HMI canvas `Pumps` and place `PUMP1` at x=40, y=40 | `eae_hmi_canvas_create`, `eae_hmi_place_symbol` |
 | D9 | Move `CAT1` on .NET canvas `Canvas1` to x=200, y=100 | `eae_hmi_update_object` |
 | D10 | Run `eae_validate` on the whole solution | `eae_validate` |
-
 | D11 | Prompt `design_hmi_from_description` with: "catPump: Value is the flow 0–100 m3/h, normal 30–70, low alarm 10, high alarm 90 (high priority)" — Claude runs `eae_hmi_design_suggest` and `eae_hmi_symbol_build` for catPump | `eae_hmi_symbol_build` |
 | D12 | Build display `PumpsSA` (level 2, section "Pumps" with PUMP1) for hmi and for ehmi on EcoRT_0 | `eae_hmi_display_build` |
 
