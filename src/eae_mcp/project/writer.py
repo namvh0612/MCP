@@ -291,8 +291,12 @@ def _ns(root) -> str | None:
     return etree.QName(root).namespace
 
 
-def add_project_item(xf: xmlrt.XmlFile, kind: str, include: str, metadata: list[tuple[str, str]]) -> None:
-    """Insert an MSBuild item, sorted case-insensitively by Include like EAE does."""
+def add_project_item(xf: xmlrt.XmlFile, kind: str, include: str, metadata: list[tuple[str, str]],
+                     allow_duplicate: bool = False) -> None:
+    """Insert an MSBuild item, sorted case-insensitively by Include like EAE does.
+
+    `allow_duplicate`: EAE registers some CAT companions twice with different DependentUpon values.
+    """
     root = xf.root
     ns = _ns(root)
     groups = [g for g in children(root, "ItemGroup") if any(local(i).lower() == kind.lower() for i in children(g))]
@@ -304,7 +308,9 @@ def add_project_item(xf: xmlrt.XmlFile, kind: str, include: str, metadata: list[
         xmlrt.insert_child(root, group, root.index(last) + 1)
     for existing in children(group):
         if local(existing).lower() == kind.lower() and existing.get("Include") == include:
-            return  # already registered
+            same = [(local(m), m.text) for m in children(existing)] == list(metadata)
+            if same or not allow_duplicate:
+                return  # already registered
     item = _el(kind, [("Include", include)], ns=ns)
     for k, v in metadata:
         m = _el(k, ns=ns)

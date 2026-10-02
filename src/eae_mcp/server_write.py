@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from . import services
 from .model import Algorithm, DataTypeDef, ECAction, ECState, ECTransition, EnumValue, Event, Interface, Var
-from .project import edit, network_edit
+from .project import cat_edit, edit, network_edit
 
 CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 MODIFY = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
@@ -217,6 +217,34 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         itf = _interface(event_inputs, event_outputs, input_vars, output_vars)
         return change(solution, lambda s: network_edit.create_composite(s, name, itf, comment, folder, library),
                       dry_run)
+
+    # -- M4: CATs ------------------------------------------------------------------------------
+
+    @mcp.tool(annotations=CREATE)
+    def eae_cat_create(name: str, event_inputs: list[EventSpec] | None = None,
+                       event_outputs: list[EventSpec] | None = None, input_vars: list[VarSpec] | None = None,
+                       output_vars: list[VarSpec] | None = None, hmi_event_inputs: list[EventSpec] | None = None,
+                       hmi_event_outputs: list[EventSpec] | None = None, hmi_input_vars: list[VarSpec] | None = None,
+                       hmi_output_vars: list[VarSpec] | None = None, symbol: str = "sDefault",
+                       web_symbol: str | None = "seDefault", comment: str | None = None, folder: str | None = None,
+                       library: str | None = None, dry_run: bool = True, solution: str | None = None) -> dict:
+        """Create a CAT exactly like EAE's "New CAT": <name>.fbt (composite network with the IThis
+        HMI interface instance, QI=TRUE), <name>_HMI.fbt, .cfg, doc/meta/offline/opcua files, the .NET
+        HMI symbol `symbol` (+ generated .event.cs/.def.cs) and the eHMI symbol `web_symbol`
+        (null = no eHMI symbol). All files are registered in the .dfbproj / HMI.csproj / WEB.htmlproj.
+
+        CAT interface: omit event/var lists to get EAE's default (INIT/REQ, INITO/CNF, QI, QO).
+        HMI interface (IThis): INIT/INITO/QI/QO/STATUS are always present. hmi_event_inputs with
+        hmi_input_vars carry values from the CAT to the HMI (e.g. REQ WITH OUT1); hmi_event_outputs
+        with hmi_output_vars carry commands from the HMI back. Supported HMI types: BOOL, BYTE, SINT,
+        INT, DINT, LINT, USINT, UINT, UDINT, REAL, LREAL, STRING.
+        Wire the inside with eae_net_add_fb / eae_net_connect using network=<name> (pins of IThis are
+        addressed as IThis.<pin>). Open the CAT in EAE afterwards to draw the symbols."""
+        given = any(x for x in (event_inputs, event_outputs, input_vars, output_vars))
+        itf = _interface(event_inputs, event_outputs, input_vars, output_vars) if given else None
+        hmi = _interface(hmi_event_inputs, hmi_event_outputs, hmi_input_vars, hmi_output_vars)
+        return change(solution, lambda s: cat_edit.create_cat(s, name, itf, hmi, symbol, web_symbol or None, folder,
+                                                              library, comment), dry_run)
 
     @mcp.tool(annotations=CREATE)
     def eae_subapp_create(name: str, application: str = "APP1", instance: str | None = None,
