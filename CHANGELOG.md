@@ -7,6 +7,9 @@
   knowledge docs `standard-library` (IEC 61499 E_*, EAE runtime blocks, generic templates, path macros) and
   an expanded `function`. Parser now keeps VAR_IN_OUT and variable type namespaces.
 - **Functions:** `eae_function_create` / `eae_function_update` (identical to EAE 26 output).
+- **HMI styles:** `eae_hmi_review` tells basic (IThis bindings) and Agile (SE.Agile HMI blocks embedded by
+  sub-CAT path) CATs and displays apart and checks every binding (BIND-01 found stale bindings in
+  SolarPlantDemo acBESS1); generators are style-aware.
 - **SA HMI generation:** `eae_hmi_design_suggest`, `eae_hmi_symbol_build`, `eae_hmi_display_build` and the
   prompt `design_hmi_from_description`: symbols and displays drawn to ISA-101 / High Performance HMI rules
   (gray graphics, moving analog indicators with normal band and limits, color + shape + number alarm

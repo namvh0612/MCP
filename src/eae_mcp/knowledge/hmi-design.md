@@ -111,3 +111,26 @@ Example element list for "Feed pump P-101: flow 0–120 m³/h, normal 40–90, l
 
 Not generated yet (do in EAE, then re-run `eae_hmi_review`): embedded trends (TrendControl pens), faceplates
 (level 4) and commands (buttons that write to the CAT).
+
+## Two HMI styles in EAE: basic and Agile
+
+`eae_hmi_review` classifies every CAT and display (`styles`, `cat_reviews`, `style` per document).
+
+| | Basic style | Agile style (SE.Agile library, SolarPlantDemo) |
+|---|---|---|
+| Where signals live | IThis (CAT HMI interface) variables | one sub-CAT **HMI block** per signal: `HMI_Indication_Real/Bool/Integer/String`, `HMI_Control_*`, `ModeSelector`, `DA`/`DIA`/`FIP` |
+| IThis | all displayed signals | usually only `AssetName` |
+| Symbol content | widgets (`TextBox<T>`, `Label`, bars, LEDs) with `TagName = <IThis var>` | the blocks' own symbols embedded (`SE.Agile.Symbols.HMI_Indication_Real_v1_0.sValChanged`, `sValueBarVertIcon`, …) with `TagName = <sub-CAT path>` |
+| Nesting | flat | application CAT `acX` (Control = `BroadcasterX`, Equipment = `bcX`) → base CAT `bcX` (HMI blocks + `IOSignal_*`); paths like `Equipment.I` |
+| Per-signal metadata | in the symbol (static) | in the block: Minimum, Maximum, Units, DecimalPlaces, Category/Prefix/Scope (PLOAD) |
+| When to use | small/simple CATs, quick symbols, generated SA symbols (`eae_hmi_symbol_build`) | libraries of reusable equipment, consistent faceplates, MQTT/Broadcaster integration |
+
+Review rules: **BIND-01** a TagName resolves to neither an IThis variable nor a sub-CAT (empty widget at
+runtime, e.g. a stale binding after a block was renamed or removed); **STY-01** one CAT mixes both styles;
+**AG-01** an HMI block is not shown on any symbol/faceplate; **AG-02** an Agile CAT carries signals in IThis;
+**BS-01** a basic CAT has IThis inputs that no symbol shows. Styles: `basic`, `agile`, `agile-block` (the
+block itself), `mixed`, `none` (no bindings).
+
+`eae_hmi_symbol_build` draws basic-style symbols. For an Agile CAT it refuses to bind HMI blocks as if they
+were IThis variables and explains the two options (embed the block symbols in EAE, or add IThis variables
+and accept a mixed style).

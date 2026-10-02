@@ -138,7 +138,10 @@ def create_server(config: Config | None = None) -> MCPServer:
                        solution: str | None = None) -> dict:
         """Review HMI displays for situation awareness / high-performance HMI practice (ISA-101, ASM,
         ISA-18.2): background, static use of saturated and alarm colors, images, fonts, text contrast,
-        density, numbers without analog context, trends, canvas hierarchy and alarm classes.
+        density, numbers without analog context, trends, canvas hierarchy and alarm classes. Also tells the
+        two HMI styles apart per CAT and display (basic: widgets bound to IThis variables; agile: SE.Agile
+        HMI blocks embedded by sub-CAT path) and checks every symbol binding (BIND-01 broken TagName,
+        STY-01 mixed style, AG-01/AG-02, BS-01).
         name: one canvas/symbol (default: all canvases); technology: hmi | ehmi; level: ISA-101 display
         level 1-4 of the reviewed display(s) for density/trend rules. Background: eae_knowledge 'hmi design'."""
         return run(services.hmi_review, sol(solution), ws, name, technology, level)
@@ -171,7 +174,16 @@ def create_server(config: Config | None = None) -> MCPServer:
         hmi = next((t for t in s.types.values() if t.path == rel), None)
         if hmi is None:
             raise ToolError(f"{td.name} has no HMI interface.")
-        return sa_builder.suggest(hmi.interface, title or td.name)
+        from .hmi.style import HMI_BLOCK
+        draft = sa_builder.suggest(hmi.interface, title or td.name)
+        blocks = [{"name": x.name, "type": x.type} for x in c.sub_cats if HMI_BLOCK.match(x.type)]
+        signals = [e for e in draft["elements"] if e["var"] != "AssetName"]
+        draft["style"] = "agile" if blocks and not signals else "mixed" if blocks else "basic"
+        if blocks:
+            draft["agile_blocks"] = blocks
+            draft["note"] += (" This CAT has Agile HMI blocks: their values are shown by embedding the blocks' "
+                              "symbols (SE.Agile style), not by IThis variables.")
+        return draft
 
     @mcp.tool(annotations=READ_ONLY)
     def eae_search(text: str, limit: int = 50, solution: str | None = None) -> list[dict]:

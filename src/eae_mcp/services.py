@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -744,11 +745,34 @@ def hmi_review(sol: Solution, ws: Workspace, name: str | None = None, technology
         displays.append({"display": f"{doc.technology} {doc.kind} {doc.name}", "path": doc.path,
                          "objects": len(disp.objects), "bound_values": len(disp.bound),
                          "findings": rv.to_dict(found)})
+    from .hmi import style as hs
+    styled = {qn: hs.classify_cat(sol, idx, qn) for qn, c in sol.cats.items() if c.symbols}
+    cat_style = {qn: r["style"] for qn, r in styled.items()}
+    by_name = {sol.types[qn].name: qn for qn in styled}
+    ids = hs.instance_types(sol)
+    for entry, doc in zip(displays, [d for d in docs if rv.load_display(sol, d) is not None]):
+        if doc.kind in ("symbol", "faceplate") and doc.cat in by_name:
+            entry["style"] = cat_style[by_name[doc.cat]]
+        elif doc.kind == "canvas":
+            entry["style"] = hs.classify_display(doc, cat_style, ids)
     nav = [] if name else rv.review_navigation(sol, technology)
     classes, alarm_findings = ([], []) if name else rv.review_alarm_classes(sol, theme)
     for x in nav + alarm_findings:
         totals[x.rule] = totals.get(x.rule, 0) + 1
-    return {"displays": displays, "navigation": rv.to_dict(nav),
+    if name:
+        cats_out = [styled[by_name[d.cat]] for d in docs if d.cat in by_name][:1]
+    else:
+        cats_out = [r for r in styled.values() if r["findings"]]
+    for r in cats_out:
+        for f in r["findings"]:
+            totals[f["rule"]] = totals.get(f["rule"], 0) + 1
+    style_counts = dict(Counter(cat_style.values()))
+    return {"styles": {"cats": style_counts,
+                       "legend": "basic = widgets bind IThis variables; agile = symbols embed SE.Agile HMI blocks "
+                                 "(HMI_Indication_*/HMI_Control_*) bound by sub-CAT path; agile-block = such a block; "
+                                 "mixed = both in one CAT"},
+            "cat_reviews": cats_out,
+            "displays": displays, "navigation": rv.to_dict(nav),
             "alarm_classes": classes, "alarm_findings": rv.to_dict(alarm_findings), "rule_counts": totals,
             "manual_checks": rv.MANUAL_CHECKS,
             "note": "Static review of display files; colors set in code-behind at runtime are not seen. "

@@ -35,6 +35,17 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
     hmi_td = next((t for t in sol.types.values() if t.path == hmi_rel), None)
     if hmi_td is None:
         raise EditError(f"CAT {td.name} has no HMI interface type.")
+    from .style import HMI_BLOCK
+    blocks = {s.name: s.type for s in cat.sub_cats if HMI_BLOCK.match(s.type)}
+    ithis = {v.name for v in hmi_td.interface.input_vars}
+    on_blocks = [e.var for e in design.elements if e.var in blocks and e.var not in ithis]
+    if on_blocks:
+        raise EditError(
+            f"CAT {td.name} is Agile style: {', '.join(on_blocks)} are HMI blocks "
+            f"({', '.join(sorted({blocks[v] for v in on_blocks}))}), not IThis variables. The SA generator draws "
+            "basic-style symbols (widgets bound to IThis). For an Agile CAT either embed the blocks' own symbols "
+            "(edit the symbol in EAE) or add these signals to IThis with eae_fb_update_interface (that mixes "
+            "styles, reported as STY-01 by eae_hmi_review).")
     try:
         warnings = sb.check_design(design, hmi_td.interface, technology)
     except (sb.DesignError, ValueError) as e:
