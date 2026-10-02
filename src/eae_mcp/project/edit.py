@@ -122,10 +122,10 @@ def create_datatype(sol: Solution, name: str, dt: DataTypeDef, comment: str | No
 
 def create_basic(sol: Solution, name: str, itf: Interface, internal_vars: list[Var], states: list[ECState],
                  transitions: list[ECTransition], algorithms: list[Algorithm], comment: str | None = None,
-                 folder: str | None = None, library: str | None = None) -> ChangeSet:
+                 folder: str | None = None, library: str | None = None, cs: ChangeSet | None = None) -> ChangeSet:
     _ensure_new_name(sol, name)
     t = target_project(sol, library)
-    cs = ChangeSet(sol.root, f"create basic FB {name}")
+    cs = cs or ChangeSet(sol.root, f"create basic FB {name}")
     rel = f"{t.dir}{name}.fbt"
     cs.create(rel, w.build_basic(name, itf, internal_vars, states, transitions, algorithms, t.namespace, comment))
     cs.create(f"{t.dir}{name}.doc.xml", w.template("doc.xml"))

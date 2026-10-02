@@ -31,14 +31,20 @@ class ChangeSet:
     def doc(self, rel: str) -> xmlrt.XmlFile:
         """Load (once) an existing XML file for editing; `commit_doc` records the edit."""
         if rel not in self._docs:
-            self._docs[rel] = xmlrt.load(self.root / rel)
+            # A file created (or already edited) earlier in this change set is edited on top of that content,
+            # so several builders can share one change set.
+            pending = self.changes.get(rel)
+            self._docs[rel] = xmlrt.parse_bytes(pending.new, self.root / rel) if pending else xmlrt.load(self.root / rel)
         return self._docs[rel]
 
     def commit_docs(self) -> None:
         for rel, xf in self._docs.items():
             new = xmlrt.dumps(xf)
             if new != xf.original:
-                self.changes[rel] = FileChange(rel, xf.original, new)
+                prior = self.changes.get(rel)
+                old = prior.old if prior else xf.original
+                self.changes[rel] = FileChange(rel, old, new)
+                xf.original = new
 
     def create(self, rel: str, content: bytes) -> None:
         if (self.root / rel).exists() or rel in self.changes:

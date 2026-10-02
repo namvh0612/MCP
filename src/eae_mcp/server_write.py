@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from . import services
 from .model import Algorithm, DataTypeDef, ECAction, ECState, ECTransition, EnumValue, Event, Interface, Var
 from .hmi import dotnet_edit, ehmi_edit, sa_builder, sa_tools
-from .project import cat_edit, edit, network_edit, opcua_edit, rest_client
+from .project import agile_edit, cat_edit, edit, network_edit, opcua_edit, rest_client
 
 CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 MODIFY = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
@@ -62,6 +62,23 @@ class RestFieldSpec(BaseModel):
     path: str = Field(description="Dotted JSON keys, e.g. 'price' or 'data.price'")
     type: str = Field("REAL", description="REAL, LREAL, DINT, INT, BOOL or STRING")
     occurrence: int = Field(1, description="n-th match of the last key (arrays of objects)")
+
+
+class AgileSignalSpec(BaseModel):
+    name: str = Field(description="Signal / HMI block name, e.g. FLOW, IRUN, SP")
+    kind: Literal["indication", "control"] = Field("indication",
+                                                    description="indication: logic → HMI; control: operator → logic")
+    type: Literal["real", "bool", "integer", "string"] = "real"
+    minimum: float | None = None
+    maximum: float | None = None
+    units: str | None = None
+    decimals: int | None = None
+    default: str | None = Field(None, description="control: initial value (IEC literal)")
+
+    def to_model(self):
+        from .project.agile_edit import AgileSignal
+        return AgileSignal(self.name, self.kind, self.type, self.minimum, self.maximum, self.units, self.decimals,
+                           self.default)
 
 
 class EventSpec(BaseModel):
@@ -325,6 +342,31 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
             auth=auth, fields=[rest_client.RestField(f.name, f.path, f.type.upper(), f.occurrence) for f in fields],
             period=period, endpoint=endpoint, folder=folder, library=library)
         return change(solution, lambda s: rest_client.create_rest_client(s, spec), dry_run)
+
+    # -- Agile CATs (SE.Agile) -------------------------------------------------------------------
+
+    @mcp.tool(annotations=CREATE)
+    def eae_agile_cat_create(name: str, signals: list[AgileSignalSpec], logic: str | None = None,
+                             class_id: int = 201, folder: str | None = None, dry_run: bool = True,
+                             solution: str | None = None) -> dict:
+        """Create an Agile-style CAT (SE.Agile library, as SolarPlantDemo acX): IThis carries only AssetName;
+        a new logic Basic FB (default fb<Name>) gets one plug aHMI_Indication_<T> per indication and one socket
+        aHMI_Control_<T> per control; each signal becomes an HMI_Indication_<T>/HMI_Control_<T> sub-CAT with
+        Minimum/Maximum/Units/DecimalPlaces, wired to the logic, on the HMI_INIT chain, with the standard skeleton
+        (GetAssetName → InitComponent(ClassId) → logic → EVENTCHAIN). The logic's REQ algorithm only forwards
+        <signal>_Value: write the computation afterwards. Then draw it with eae_hmi_design_suggest +
+        eae_hmi_symbol_build (elements bind to the block names)."""
+        sigs = [x.to_model() for x in signals]
+        return change(solution, lambda s: agile_edit.create_agile_cat(s, name, sigs, logic, class_id, folder), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_agile_signal_add(cat: str, signals: list[AgileSignalSpec], logic: str | None = None,
+                             dry_run: bool = True, solution: str | None = None) -> dict:
+        """Add signals to an existing Agile CAT: HMI block sub-CATs, the matching plug/socket on its logic Basic
+        FB (found automatically, or name the instance with logic=…), PREQ→PLOAD, logic↔block adapter wiring and
+        the HMI_INIT chain. The logic's ECC/ST is not changed: the result lists the lines to add."""
+        sigs = [x.to_model() for x in signals]
+        return change(solution, lambda s: agile_edit.add_signals(s, cat, sigs, logic), dry_run)
 
     # -- M4: eHMI canvases ------------------------------------------------------------------------
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Agile CATs:** `eae_agile_cat_create` builds an SE.Agile-style CAT (IThis = AssetName, logic Basic FB with
+  one plug/socket per signal, HMI_Indication/HMI_Control blocks with Min/Max/Units, GetAssetName →
+  InitComponent → EVENTCHAIN skeleton, HMI_INIT chain), `eae_agile_signal_add` extends an existing one. Basic
+  FBs can now declare Sockets/Plugs and emit adapter events (`X.SET`); builders can share one change set.
+
 - **Library knowledge:** `eae_library_guide` (ranked drill-down), `eae_generic_fbs` (generic FB registry with
   pins learned from connections; add generic FBs by template + parameters), `eae_knowledge` (section search),
   knowledge docs `standard-library` (IEC 61499 E_*, EAE runtime blocks, generic templates, path macros) and

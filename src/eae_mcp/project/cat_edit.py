@@ -223,7 +223,7 @@ def _register_web_symbol(cs: ChangeSet, p: CatPaths, symbol: str) -> None:
 def create_cat(sol: Solution, name: str, itf: Interface | None = None, hmi: Interface | None = None,
                symbol: str = "sDefault", web_symbol: str | None = "seDefault", folder: str | None = None,
                library: str | None = None, comment: str | None = None,
-               now: _dt.datetime | None = None) -> ChangeSet:
+               now: _dt.datetime | None = None, cs: ChangeSet | None = None) -> ChangeSet:
     """New CAT with an IThis HMI interface, a .NET HMI symbol and (unless web_symbol=None) an eHMI symbol."""
     _ensure_new_name(sol, name)
     _ensure_new_name(sol, f"{name}_HMI")
@@ -241,7 +241,7 @@ def create_cat(sol: Solution, name: str, itf: Interface | None = None, hmi: Inte
     now = now or _dt.datetime.now()
     stamp = _stamp(now)
     ns = t.namespace
-    cs = ChangeSet(sol.root, f"create CAT {name}")
+    cs = cs or ChangeSet(sol.root, f"create CAT {name}")
 
     # IEC 61499 part. Build the HMI SIFB first: its QI ID is the IThis parameter in the CAT network.
     d = f"{t.dir}{name}/{name}"

@@ -10,7 +10,7 @@ from lxml import etree
 
 from ..io import xmlrt
 from ..io.ids import new_guid, new_id16
-from ..model import Algorithm, DataTypeDef, ECState, ECTransition, Event, Interface, Var
+from ..model import AdapterDecl, Algorithm, DataTypeDef, ECState, ECTransition, Event, Interface, Var
 from .changes import ChangeSet
 from .types import child, children, local
 
@@ -121,7 +121,19 @@ def interface_element(itf: Interface, taken: set[str]) -> etree._Element:
             section = _sub(root, tag)
             for v in variables:
                 section.append(var_element(v, True, taken))
+    # Basic FBs: <Sockets>/<Plugs> (Composite/CAT boundaries use AdapterInputs/AdapterOutputs, not written here).
+    for tag, role in (("Sockets", "socket"), ("Plugs", "plug")):
+        decls = [a for a in itf.adapter_inputs + itf.adapter_outputs if a.role == role]
+        if decls:
+            section = _sub(root, tag)
+            for a in decls:
+                section.append(adapter_element(a))
     return root
+
+
+def adapter_element(a: AdapterDecl) -> etree._Element:
+    check_identifier(a.name, "adapter name")
+    return _el("AdapterDeclaration", [("ID", a.id), ("Name", a.name), ("Type", a.type), ("Namespace", a.namespace)])
 
 
 def _header(root, standard: str, remarks: str | None) -> None:
@@ -265,12 +277,13 @@ def check_basic(itf: Interface, internal_vars: list[Var], states: list[ECState],
     state_names = {"START"} | {s.name for s in states}
     alg_names = {a.name for a in algorithms}
     out_events = {e.name for e in itf.event_outputs}
+    adapters = {a.name for a in itf.adapter_inputs + itf.adapter_outputs}
     for s in states:
         check_identifier(s.name, "state name")
         for a in s.actions:
             if a.algorithm and a.algorithm not in alg_names:
                 raise SpecError(f"State {s.name}: algorithm '{a.algorithm}' is not defined.")
-            if a.output and a.output not in out_events:
+            if a.output and a.output not in out_events and a.output.split(".")[0] not in adapters:
                 raise SpecError(f"State {s.name}: '{a.output}' is not an output event.")
     for t in transitions:
         for end in (t.source, t.destination):

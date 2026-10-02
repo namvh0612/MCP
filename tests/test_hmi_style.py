@@ -85,3 +85,45 @@ def test_agile_suggest_walks_nested_blocks(solar_dir):
     sa_tools.build_symbol(sol, "acFlowTransmitter_v1_0",
                           sb.SymbolDesign("FT-101", [sb.ElementSpec("value", "Equipment.TOT.I", range=(0, 100))]),
                           technology="hmi")
+
+
+def test_agile_cat_create_and_extend(solar_dir, tmp_path):
+    from eae_mcp.project import agile_edit as ag
+    from eae_mcp.project.validate import validate_type
+    root = tmp_path / "s"
+    shutil.copytree(solar_dir, root)
+    sigs = [ag.AgileSignal("FLOW", "indication", "real", 0, 120, "m3/h", 1),
+            ag.AgileSignal("RUN", "indication", "bool"),
+            ag.AgileSignal("SP", "control", "real", 0, 120, "m3/h", 1, default="50.0")]
+    ag.create_agile_cat(load_solution(root), "acPump_v1_0", sigs).apply()
+    sol = load_solution(root)
+    cat = sol.cats["Main.acPump_v1_0"]
+    assert [(s.name, s.type) for s in cat.sub_cats] == [("FLOW", "HMI_Indication_Real_v1_0"),
+                                                        ("RUN", "HMI_Indication_Bool_v1_0"),
+                                                        ("SP", "HMI_Control_Real_v1_0")]
+    logic = sol.types["Main.fbPump_v1_0"]
+    assert {(a.name, a.role) for a in logic.interface.adapter_inputs + logic.interface.adapter_outputs} == \
+        {("FLOW", "plug"), ("RUN", "plug"), ("SP", "socket")}
+    issues = [i["message"] for q in ("Main.acPump_v1_0", "Main.fbPump_v1_0")
+              for i in validate_type(sol.types[q], sol) if i["severity"] != "info"]
+    assert all("EVENTCHAIN" in m for m in issues)  # runtime type: needs the library catalog
+    net = sol.types["Main.acPump_v1_0"].network
+    adapters = {(c.source, c.destination) for c in net.connections if c.kind == "adapter"}
+    # HMI_INIT chain Register → FLOW → RUN → SP → Register (pins with an ID are referenced by ID)
+    assert ("$Register.24", "$FLOW.HMI_INIT") in adapters and ("$SP.HMI_INITO", "$Register.HMI_INIT") in adapters
+    fb = next(i for i in net.instances if i.name == "FLOW")
+    assert {p.lstrip("$"): v for p, v in fb.parameters.items()}["Units"] == "'m3/h'"
+
+    cs = ag.add_signals(load_solution(root), "acPump_v1_0", [ag.AgileSignal("TEMP", "indication", "real", 0, 150, "degC")])
+    assert not [x for x in cs.warnings if x.startswith("warning") and "EVENTCHAIN" not in x]
+    cs.apply()
+    sol = load_solution(root)
+    net = sol.types["Main.acPump_v1_0"].network
+    adapters = {(c.source, c.destination) for c in net.connections if c.kind == "adapter"}
+    assert ("$SP.HMI_INITO", "$TEMP.HMI_INIT") in adapters and ("$TEMP.31", "$Register.HMI_INIT") in adapters
+    assert sum(1 for c in adapters if c[1] == "$Register.HMI_INIT") == 1
+    design = sb.SymbolDesign("P-101", [sb.ElementSpec("value", "TEMP", range=(0, 150), unit="degC"),
+                                       sb.ElementSpec("state", "RUN", states={"false": "Stopped", "true": "Running"})])
+    sa_tools.build_symbol(sol, "acPump_v1_0", design, technology="both").apply()
+    with pytest.raises(EditError, match="not an Agile CAT"):
+        ag.add_signals(load_solution(root), "ElectricPriceUpdate", [ag.AgileSignal("X")])
