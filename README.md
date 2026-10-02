@@ -82,7 +82,7 @@ interfaces of the system-library types the solution uses. Copy the solution and 
 | `eae_catalog_build` | Index system-library types from the library store |
 | `eae_validate` | Static checks: identifiers, reserved words, WITH, ECC, connections, registration |
 
-### Write tools (M2–M4)
+### Write tools (M2–M5)
 
 All write tools default to **`dry_run=true`** and return a unified diff. Pass `dry_run=false` to write;
 this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRITE=1`).
@@ -106,10 +106,16 @@ this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRI
 | `eae_opcua_expose` | Expose/unexpose a variable on OPC UA (application layer and mapped resources) |
 | `eae_ehmi_canvas_create` | New eHMI canvas on a device, added to its canvas resolution |
 | `eae_ehmi_place_symbol`, `eae_ehmi_update_object`, `eae_ehmi_remove_object` | Put a CAT instance on an eHMI canvas, move/resize/edit it, remove it |
+| `eae_hmi_canvas_create` | New .NET HMI canvas, registered and added to a canvas resolution |
+| `eae_hmi_place_symbol`, `eae_hmi_update_object`, `eae_hmi_remove_object` | Put a CAT instance on a .NET HMI canvas, move it or set properties, remove it |
 
 CAT bookkeeping is automatic: adding a CAT instance inside a CAT lists it as `<SubCAT>` in the `.cfg`,
 and changing the IThis interface (`eae_fb_update_interface` on `<Cat>_HMI`) regenerates `.event.cs`,
 the symbols' `.cnv.xml` mapping and `_HMI.opcua.xml`.
+
+.NET HMI edits touch only `InitializeComponent()` of `*.cnv.Designer.cs`, through a constrained code model
+that reproduces every EAE-written Designer file byte for byte; files it cannot model are refused, never
+rewritten. Drawing symbol content (shapes inside a symbol or faceplate) stays in EAE.
 
 Every write:
 - backs up modified files to `<solution>/.eae-mcp/backup/<timestamp>/`;

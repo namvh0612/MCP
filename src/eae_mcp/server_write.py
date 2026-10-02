@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from . import services
 from .model import Algorithm, DataTypeDef, ECAction, ECState, ECTransition, EnumValue, Event, Interface, Var
-from .hmi import ehmi_edit
+from .hmi import dotnet_edit, ehmi_edit
 from .project import cat_edit, edit, network_edit, opcua_edit
 
 CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
@@ -298,6 +298,40 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         EAE. path: <application instance>[.<inner FB>...].<variable>, e.g. 'CAT1.IThis.OUT1'. Written
         to the application layer and to every resource the instance is mapped to."""
         return change(solution, lambda s: opcua_edit.set_exposed(s, path, exposed, application), dry_run)
+
+    # -- M5: .NET HMI canvases -------------------------------------------------------------------
+
+    @mcp.tool(annotations=CREATE)
+    def eae_hmi_canvas_create(name: str, resolution: str | None = None, title: str = "", dry_run: bool = True,
+                              solution: str | None = None) -> dict:
+        """Create a .NET HMI canvas (HMI/<name>.cnv.cs + .Designer.cs + .resx), registered in HMI.csproj
+        and added to the top level of a canvas resolution (default: the first with a real size). Its
+        size is the resolution's work area."""
+        return change(solution, lambda s: dotnet_edit.create_canvas(s, name, resolution, title), dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_hmi_place_symbol(canvas: str, instance: str, symbol: str | None = None, x: float | None = None,
+                             y: float | None = None, name: str | None = None, application: str | None = None,
+                             dry_run: bool = True, solution: str | None = None) -> dict:
+        """Show a CAT instance of an application on a .NET HMI canvas using one of its symbols
+        (default: the CAT's first symbol, e.g. sDefault). The object is named after the instance and
+        bound to it by ID (TagName). x/y: position in canvas pixels."""
+        return change(solution, lambda s: dotnet_edit.place_symbol(s, canvas, instance, symbol, x, y, name,
+                                                                   application), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_hmi_update_object(canvas: str, name: str, properties: dict[str, str | None] | None = None,
+                              x: float | None = None, y: float | None = None, dry_run: bool = True,
+                              solution: str | None = None) -> dict:
+        """Change a .NET HMI canvas object. x/y move it. properties: C# values exactly as the Designer
+        writes them, e.g. {"Visible": "false", "Text": "\"Pump 1\""}; null removes an assignment.
+        Use the canvas name as `name` to change the canvas itself (e.g. Brush)."""
+        return change(solution, lambda s: dotnet_edit.update_object(s, canvas, name, properties, x, y), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_hmi_remove_object(canvas: str, name: str, dry_run: bool = True, solution: str | None = None) -> dict:
+        """Remove an object (e.g. a placed CAT symbol) from a .NET HMI canvas."""
+        return change(solution, lambda s: dotnet_edit.remove_object(s, canvas, name), dry_run)
 
     @mcp.tool(annotations=CREATE)
     def eae_subapp_create(name: str, application: str = "APP1", instance: str | None = None,
