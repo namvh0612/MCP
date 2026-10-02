@@ -159,10 +159,11 @@ def create_server(config: Config | None = None) -> MCPServer:
 
     @mcp.tool(annotations=READ_ONLY)
     def eae_hmi_design_suggest(cat: str, title: str | None = None, solution: str | None = None) -> dict:
-        """Draft situation-awareness symbol design for a CAT from its HMI interface (IThis inputs):
-        element kind per variable (value / state / alarm / text) and the engineering data still missing
-        (units, spans, normal ranges, alarm limits, state texts). Complete it from the user's description,
-        then call eae_hmi_symbol_build. It never invents limits."""
+        """Draft situation-awareness symbol design for a CAT: element kind per signal (value / state / alarm /
+        text) and the engineering data still missing (units, spans, normal ranges, alarm limits, state texts).
+        Basic CATs: signals are IThis inputs. Agile CATs (IThis = AssetName, signals in SE.Agile HMI blocks):
+        elements bind to the block paths, e.g. 'Equipment.IX'. Complete it from the user's description, then
+        call eae_hmi_symbol_build. It never invents limits."""
         import os as _os
         from .hmi import sa_builder
         s = sol(solution)
@@ -174,15 +175,20 @@ def create_server(config: Config | None = None) -> MCPServer:
         hmi = next((t for t in s.types.values() if t.path == rel), None)
         if hmi is None:
             raise ToolError(f"{td.name} has no HMI interface.")
-        from .hmi.style import HMI_BLOCK
-        draft = sa_builder.suggest(hmi.interface, title or td.name)
-        blocks = [{"name": x.name, "type": x.type} for x in c.sub_cats if HMI_BLOCK.match(x.type)]
-        signals = [e for e in draft["elements"] if e["var"] != "AssetName"]
-        draft["style"] = "agile" if blocks and not signals else "mixed" if blocks else "basic"
-        if blocks:
-            draft["agile_blocks"] = blocks
-            draft["note"] += (" This CAT has Agile HMI blocks: their values are shown by embedding the blocks' "
-                              "symbols (SE.Agile style), not by IThis variables.")
+        from .hmi import agile_blocks
+        from .hmi.style import NAME_VARS
+        signals = [v for v in hmi.interface.input_vars if v.name not in NAME_VARS and v.name != "QI"]
+        found = agile_blocks.blocks(s, c)
+        if found and not signals:
+            draft = agile_blocks.suggest(s, c, title or td.name)
+            draft["style"] = "agile"
+        else:
+            draft = sa_builder.suggest(hmi.interface, title or td.name)
+            draft["style"] = "mixed" if found else "basic"
+            if found:
+                draft["agile_blocks"] = [{"path": p, "type": t} for p, t in found]
+                draft["note"] += (" This CAT also has Agile HMI blocks: elements may bind to their paths "
+                                  "(e.g. 'Equipment.I') instead of IThis variables; mixing styles gives STY-01.")
         return draft
 
     @mcp.tool(annotations=READ_ONLY)

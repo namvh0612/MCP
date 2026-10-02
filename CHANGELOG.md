@@ -9,7 +9,10 @@
 - **Functions:** `eae_function_create` / `eae_function_update` (identical to EAE 26 output).
 - **HMI styles:** `eae_hmi_review` tells basic (IThis bindings) and Agile (SE.Agile HMI blocks embedded by
   sub-CAT path) CATs and displays apart and checks every binding (BIND-01 found stale bindings in
-  SolarPlantDemo acBESS1); generators are style-aware.
+  SolarPlantDemo acBESS1). `eae_hmi_symbol_build` also draws **Agile** symbols: elements bound to HMI block
+  paths embed the block bridges (`sValChanged` / `seValChanged`, learned from the library) and take units,
+  decimals and span from the block on .NET; `eae_hmi_design_suggest` drafts Agile CATs from their (nested)
+  blocks. HP-09 no longer counts invisible Agile bridges as number displays.
 - **SA HMI generation:** `eae_hmi_design_suggest`, `eae_hmi_symbol_build`, `eae_hmi_display_build` and the
   prompt `design_hmi_from_description`: symbols and displays drawn to ISA-101 / High Performance HMI rules
   (gray graphics, moving analog indicators with normal band and limits, color + shape + number alarm

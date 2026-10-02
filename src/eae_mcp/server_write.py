@@ -390,8 +390,10 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         indicator (span, shaded normal band, alarm-limit ticks, pointer that turns to the priority color
         only when outside the limits), state texts with abnormal states highlighted at runtime, and alarm
         indicators with color + shape + priority number (hidden when no alarm).
-        elements bind to the CAT's HMI interface inputs (add them first with eae_fb_update_interface on
-        <Cat>_HMI). The result is generated code (Designer + C# / JSON + TypeScript) that must pass
+        Each element's var is either an IThis input of the CAT (basic style; add it first with
+        eae_fb_update_interface on <Cat>_HMI) or the path of an SE.Agile HMI_Indication_* block (Agile style,
+        e.g. 'Equipment.IX'): the block's invisible bridge (sValChanged / seValChanged) is embedded and the
+        value drawn from it; on .NET units, decimals and span come from the block when not given. The result is generated code (Designer + C# / JSON + TypeScript) that must pass
         eae_hmi_review; existing symbols are only replaced with overwrite=true."""
         design = sa_builder.SymbolDesign(title, [e.to_model() for e in elements], width)
         return change(solution, lambda s: sa_tools.build_symbol(s, cat, design, technology, symbol, web_symbol,

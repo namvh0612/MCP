@@ -131,6 +131,17 @@ runtime, e.g. a stale binding after a block was renamed or removed); **STY-01** 
 **BS-01** a basic CAT has IThis inputs that no symbol shows. Styles: `basic`, `agile`, `agile-block` (the
 block itself), `mixed`, `none` (no bindings).
 
-`eae_hmi_symbol_build` draws basic-style symbols. For an Agile CAT it refuses to bind HMI blocks as if they
-were IThis variables and explains the two options (embed the block symbols in EAE, or add IThis variables
-and accept a mixed style).
+`eae_hmi_symbol_build` draws both styles; each element's `var` decides:
+- **Basic:** an IThis input → widgets bound with `TagName = <var>` (Designer `ValueChanged` handlers / eHMI
+  `ea.value`).
+- **Agile:** an `HMI_Indication_*` block path (`Equipment.IX`, `Equipment.TOT.I`) → the block's invisible bridge
+  is embedded with `TagName = <path>` (.NET `SE.Agile.Symbols.<Block>.sValChanged`, eHMI `seValChanged`) and the
+  SA graphics are drawn from its value (`OnValChanged` + `Val` / `setValueChangedHandler`). On .NET, units,
+  decimals and — when no `range` is given — the span come from the block at runtime (`ValUnits`,
+  `ValDecimalPlaces`, `ValMinimum`/`ValMaximum`); eHMI needs `unit` and `range` in the design.
+  `HMI_Indication_String` has no eHMI bridge (use technology `hmi`). Commands (`HMI_Control_*`, `ModeSelector`)
+  are not drawn yet.
+- Mixing IThis variables and block paths in one symbol works but reports STY-01.
+
+`eae_hmi_design_suggest` drafts Agile CATs from their blocks (walking `acX` → `Equipment` → blocks): Real/Integer
+→ `value`, Bool → `state`, String → `text`; controls are listed under `not_drawn`.

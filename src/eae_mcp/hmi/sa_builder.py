@@ -67,8 +67,13 @@ def _base(t: str) -> str:
     return t.split("[")[0].upper()
 
 
-def check_design(d: SymbolDesign, hmi: Interface, technology: str) -> list[str]:
-    """Raise DesignError for errors; return warnings."""
+PSEUDO_IEC = {"float": "REAL", "double": "LREAL", "short": "INT", "int": "DINT", "ushort": "UINT", "byte": "USINT",
+              "bool": "BOOL", "string": "STRING"}
+
+
+def check_design(d: SymbolDesign, hmi: Interface, technology: str, bridges: dict | None = None) -> list[str]:
+    """Raise DesignError for errors; return warnings. `bridges`: var (sub-CAT path) → agile_blocks.Bridge."""
+    bridges = bridges or {}
     warnings: list[str] = []
     if not d.title.strip() or len(d.title) > 40:
         raise DesignError("title must be 1..40 characters.")
@@ -77,7 +82,13 @@ def check_design(d: SymbolDesign, hmi: Interface, technology: str) -> list[str]:
     if not d.elements:
         raise DesignError("A symbol needs at least one element.")
     types = {v.name: v.type for v in hmi.input_vars if v.name not in ("QI",)}
-    carried = {w for e in hmi.event_inputs if e.name != "INIT" for w in e.with_vars}
+    for var, b in bridges.items():
+        if b.val_type not in PSEUDO_IEC:
+            raise DesignError(f"{var}: block {b.block} has no usable .NET bridge symbol (sValChanged with Val).")
+        types[var] = PSEUDO_IEC[b.val_type]
+        if technology in ("ehmi", "both") and not b.web_class:
+            raise DesignError(f"{var}: block {b.block} has no eHMI bridge symbol (seVal…); use technology='hmi'.")
+    carried = {w for e in hmi.event_inputs if e.name != "INIT" for w in e.with_vars} | set(bridges)
     seen = set()
     for e in d.elements:
         if e.kind not in ("value", "state", "alarm", "text"):
@@ -108,6 +119,9 @@ def check_design(d: SymbolDesign, hmi: Interface, technology: str) -> list[str]:
                     raise DesignError(f"{e.var}: normal must be [low, high].")
             elif e.normal or e.limits:
                 raise DesignError(f"{e.var}: normal/limits need a range for the analog indicator.")
+            elif e.var in bridges and bridges[e.var].has_span:
+                warnings.append(f"info: {e.var}: the .NET indicator uses the block's Minimum/Maximum at runtime; "
+                                "give range/normal/limits to shade the normal band (the eHMI shows the number only).")
             elif not e.range:
                 warnings.append(f"info: {e.var} has no range; add range/normal/limits so the operator sees the "
                                 "value against its normal band (SA level 2).")
@@ -146,17 +160,24 @@ def _id(s: str) -> str:
     return re.sub(r"\W", "_", s)
 
 
-def layout(d: SymbolDesign) -> tuple[list[Box], int, int]:
+def layout(d: SymbolDesign, bridges: dict | None = None) -> tuple[list[Box], int, int]:
     W = d.width
     pad = 8
     boxes = [Box("card", "card", 0, 0, W, 0), Box("title", "title", pad, 4, W - 2 * pad - 30, 20, d.title)]
+    bridges = bridges or {}
+    execs: set[str] = set()
+
+    def exec_box(e: ElementSpec) -> None:  # one data accessor per variable, shared by its elements
+        if e.var not in execs:
+            execs.add(e.var)
+            boxes.append(Box(f"x{_id(e.var)}", "exec", 0, 0, 0, 0, var=e.var, element=e))
     alarms = [e for e in d.elements if e.kind == "alarm"]
     for i, e in enumerate(alarms):
         x = W - pad - 22 - i * 26
         n = _id(e.var)
         boxes.append(Box(f"alm{n}", "alarm", x, 4, 20, 20, var=e.var, element=e))
         boxes.append(Box(f"almTxt{n}", "alarmtext", x + 6, 6, 10, 14, var=e.var, element=e))
-        boxes.append(Box(f"x{n}", "exec", 0, 0, 0, 0, var=e.var, element=e))
+        exec_box(e)
     y = 30.0
     for e in d.elements:
         n = _id(e.var)
@@ -166,6 +187,14 @@ def layout(d: SymbolDesign) -> tuple[list[Box], int, int]:
             boxes.append(Box(f"lbl{n}", "label", pad, y + 3, W - 2 * pad - 90, 18, text, element=e))
             boxes.append(Box(f"val{n}", "value", W - pad - 90, y, 90, 22, var=e.var, element=e))
             y += 26
+            dynamic = not e.range and e.var in bridges and bridges[e.var].has_span
+            if e.var in bridges:
+                exec_box(e)
+            if dynamic:
+                tw = W - 2 * pad
+                boxes.append(Box(f"trk{n}", "track", pad, y + 3, tw, 8, element=e, shape="dynamic"))
+                boxes.append(Box(f"ptr{n}", "pointer", pad - 2, y, 4, 14, var=e.var, element=e, shape="dynamic"))
+                y += 20
             if e.range:
                 tw = W - 2 * pad
                 boxes.append(Box(f"trk{n}", "track", pad, y + 3, tw, 8, element=e))
@@ -180,16 +209,18 @@ def layout(d: SymbolDesign) -> tuple[list[Box], int, int]:
                     if lim is not None:
                         boxes.append(Box(f"lim{n}{'LH'[j]}", "tick", px(lim), y, 0, 14, element=e))
                 boxes.append(Box(f"ptr{n}", "pointer", pad - 2, y, 4, 14, var=e.var, element=e))
-                boxes.append(Box(f"x{n}", "exec", 0, 0, 0, 0, var=e.var, element=e))
+                exec_box(e)
                 y += 20
         elif e.kind == "state":
             boxes.append(Box(f"lbl{n}", "label", pad, y + 3, W / 2 - pad, 18, label, element=e))
             boxes.append(Box(f"sta{n}", "state", W / 2, y, W / 2 - pad, 22, "—", var=e.var, element=e))
-            boxes.append(Box(f"x{n}", "exec", 0, 0, 0, 0, var=e.var, element=e))
+            exec_box(e)
             y += 26
         elif e.kind == "text":
             boxes.append(Box(f"lbl{n}", "label", pad, y + 3, W / 2 - pad, 18, label, element=e))
             boxes.append(Box(f"txt{n}", "text", W / 2, y, W / 2 - pad, 22, var=e.var, element=e))
+            if e.var in bridges:
+                exec_box(e)
             y += 26
     H = int(y + 6)
     boxes[0].h = H
@@ -229,7 +260,20 @@ def _shape_points(b: Box, shape: str) -> list[tuple[float, float]]:
     return [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
 
 
-def _dotnet_sections(boxes: list[Box], types: dict[str, str]) -> tuple[list[str], list[tuple[str, list[str]]], list[str]]:
+def _code_label(b: Box, align: str = "MiddleRight", bold: bool = False) -> list[tuple[str, str]]:
+    """A plain Label whose Text is set by the generated code (values of Agile blocks)."""
+    return [("AngleIgnore", "true"), ("BorderStyle", "System.Windows.Forms.BorderStyle.None"),
+            ("Bounds", _rect(b)), ("Brush", 'new NxtControl.Drawing.Brush("Transparent")'),
+            ("Font", _font(st.SIZE_TEXT, bold)), ("FontScale", "true"), ("Name", f'"{b.name}"'),
+            ("Pen", 'new NxtControl.Drawing.Pen("Transparent")'), ("Text", ds.string("—")),
+            ("TextAlignment", f"NxtControl.Drawing.ContentAlignment.{align}"),
+            ("TextAutoSizeHorizontalOffset", "10"), ("TextColor", _c(st.TEXT)),
+            ("TextPadding", "new NxtControl.Drawing.Padding(2)")]
+
+
+def _dotnet_sections(boxes: list[Box], types: dict[str, str],
+                     bridges: dict | None = None) -> tuple[list[str], list[tuple[str, list[str]]], list[str]]:
+    bridges = bridges or {}
     prelude, sections, fields = [], [], []
     for b in boxes:
         n = b.name
@@ -271,6 +315,23 @@ def _dotnet_sections(boxes: list[Box], types: dict[str, str]) -> tuple[list[str]
                 extra += [f"{T3}new NxtControl.Drawing.PointF({ds.num(px)}, {ds.num(py)})," for px, py in pts]
                 extra[-1] = extra[-1][:-1] + "});"
             props += [("Visible", "false")]
+        elif b.kind in ("value", "text") and b.var in bridges:
+            typ = "NxtControl.GuiFramework.Label"
+            props = _code_label(b, "MiddleRight" if b.kind == "value" else "MiddleLeft")
+        elif b.kind == "exec" and b.var in bridges:
+            br = bridges[b.var]
+            typ = br.net_class
+            begin = True
+            zero = DOTNET_T[_base(types[b.var])][1]
+            props = [("DesignMatrix", ds.matrix(0, 0)), ("Name", f'"{n}"'),
+                     ("SecurityToken", "((uint)(4294967295u))"), ("TagName", ds.string(br.path)), ("Val", zero)]
+            if "ValDecimalPlaces" in br.props:
+                props.append(("ValDecimalPlaces", "((byte)(0))"))
+            for prop in ("ValMaximum", "ValMinimum"):
+                if prop in br.props:
+                    props.append((prop, zero))
+            if "ValUnits" in br.props:
+                props.append(("ValUnits", "null"))
         elif b.kind == "value":
             ct, zero = DOTNET_T[_base(types[b.var])]
             typ = f"System.HMI.Symbols.Base.TextBox<{ct}>"
@@ -323,8 +384,9 @@ def _dotnet_sections(boxes: list[Box], types: dict[str, str]) -> tuple[list[str]
     return prelude, sections, fields
 
 
-def dotnet_designer(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, str], W: int, H: int) -> str:
-    prelude, sections, fields = _dotnet_sections(boxes, types)
+def dotnet_designer(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, str], W: int, H: int,
+                    bridges: dict | None = None) -> str:
+    prelude, sections, fields = _dotnet_sections(boxes, types, bridges)
     shapes = [n for n, _ in sections]
     body = "".join(p + NL for p in prelude)
     parts = [f"{T3}// {NL}{T3}// {n}{NL}{T3}// {NL}" + NL.join(lines) for n, lines in sections]
@@ -350,59 +412,106 @@ def _cs_color(rgb: st.RGB) -> str:
     return f"new NxtControl.Drawing.Color((byte){rgb[0]}, (byte){rgb[1]}, (byte){rgb[2]})"
 
 
-def dotnet_code_behind(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, str]) -> str:
-    """C# event handlers: move pointers, color abnormal values/states, show alarm indicators."""
+def _limit_cond(e: ElementSpec) -> str:
+    low, high = (e.limits or (None, None))
+    return " || ".join(c for c in ((f"v < {low!r}" if low is not None else ""),
+                                   (f"v > {high!r}" if high is not None else "")) if c) or "false"
+
+
+def _cs_element(e: ElementSpec, boxes: list[Box], types: dict[str, str], br, acc: str) -> list[str]:
+    """C# statements updating one element from `object raw` (accessor name `acc` for Agile bridges)."""
+    n = _id(e.var)
+    p = st.priority(e.priority)
+    is_bool = _base(types[e.var]) == "BOOL"
     m: list[str] = []
+    if e.kind == "value":
+        m += ["\t\t\t{", "\t\t\t\tdouble v;",
+              "\t\t\t\ttry { v = Convert.ToDouble(raw); } catch (Exception) { return; }"]
+        if br is not None:
+            dec = f'"F" + {acc}.ValDecimalPlaces' if "ValDecimalPlaces" in br.props else '"0.##"'
+            unit = (f' + (string.IsNullOrEmpty({acc}.ValUnits) ? "" : " " + {acc}.ValUnits)'
+                    if "ValUnits" in br.props and not e.unit else "")
+            m += [f"\t\t\t\tval{n}.Text = v.ToString({dec}){unit};"]
+        ptr = next((x for x in boxes if x.name == f"ptr{n}"), None)
+        trk = next((x for x in boxes if x.name == f"trk{n}"), None)
+        if ptr is not None:
+            if ptr.shape == "dynamic":
+                m += [f"\t\t\t\tdouble lo = {acc}.ValMinimum, hi = {acc}.ValMaximum;",
+                      "\t\t\t\tif (hi <= lo) return;", "\t\t\t\tbool abnormal = false;"]
+            else:
+                lo, hi = e.range
+                m += [f"\t\t\t\tdouble lo = {lo!r}, hi = {hi!r};", f"\t\t\t\tbool abnormal = {_limit_cond(e)};"]
+            m += ["\t\t\t\tdouble k = (v - lo) / (hi - lo);", "\t\t\t\tif (k < 0) k = 0; else if (k > 1) k = 1;",
+                  f"\t\t\t\tfloat x = (float)({trk.x!r} + k * {trk.w!r}) - 2F;",
+                  f"\t\t\t\tptr{n}.Bounds = new NxtControl.Drawing.RectF(x, {ptr.y!r}F, abnormal ? 6F : 4F, {ptr.h!r}F);",
+                  f"\t\t\t\tptr{n}.Brush = new NxtControl.Drawing.Brush(abnormal ? {_cs_color(p.color)} : "
+                  f"{_cs_color(st.POINTER)});"]
+        m += ["\t\t\t}"]
+    elif e.kind == "state":
+        m += ["\t\t\t{", "\t\t\t\tstring key = raw == null ? \"\" : " +
+              ("(raw is bool ? ((bool)raw ? \"true\" : \"false\") : raw.ToString());" if is_bool else "raw.ToString();"),
+              "\t\t\t\tstring text = key;", "\t\t\t\tbool abnormal = false;", "\t\t\t\tswitch (key)", "\t\t\t\t{"]
+        for k, v in e.states.items():
+            m += [f"\t\t\t\t\tcase \"{k}\": text = \"{v}\"; abnormal = {'true' if k in e.abnormal else 'false'}; break;"]
+        m += ["\t\t\t\t}", f"\t\t\t\tsta{n}.Text = text;",
+              f"\t\t\t\tsta{n}.Brush = abnormal ? new NxtControl.Drawing.Brush({_cs_color(p.color)}) : "
+              "new NxtControl.Drawing.Brush(\"Transparent\");",
+              f"\t\t\t\tsta{n}.TextColor = abnormal ? {_cs_color(p.text_color)} : {_cs_color(st.TEXT)};", "\t\t\t}"]
+    elif e.kind == "alarm":
+        m += ["\t\t\t{"]
+        if is_bool:
+            m += [f"\t\t\t\tint level = (raw is bool && (bool)raw) ? {e.priority} : 0;"]
+        else:
+            m += ["\t\t\t\tint level = 0;", "\t\t\t\ttry { level = Convert.ToInt32(raw); } catch (Exception) { }"]
+        m += ["\t\t\t\tNxtControl.Drawing.Color c;", "\t\t\t\tswitch (level)", "\t\t\t\t{"]
+        for lvl, pr in st.PRIORITIES.items():
+            m += [f"\t\t\t\t\tcase {lvl}: c = {_cs_color(pr.color)}; break;"]
+        m += ["\t\t\t\t\tdefault: c = " + _cs_color(st.INDICATOR_IDLE) + "; break;", "\t\t\t\t}",
+              f"\t\t\t\talm{n}.Brush = new NxtControl.Drawing.Brush(c);", f"\t\t\t\talm{n}.Visible = level > 0;",
+              f"\t\t\t\talmTxt{n}.Text = level > 0 ? level.ToString() : \"\";",
+              f"\t\t\t\talmTxt{n}.Visible = level > 0;", "\t\t\t}"]
+    elif e.kind == "text" and br is not None:
+        m += [f"\t\t\ttxt{n}.Text = raw == null ? \"\" : raw.ToString();"]
+    return m
+
+
+def _elements_by_var(boxes: list[Box]) -> dict[str, list[ElementSpec]]:
+    out: dict[str, list[ElementSpec]] = {}
+    for b in boxes:
+        if b.element is not None and b.kind in ("value", "state", "alarm", "text"):
+            lst = out.setdefault(b.var, [])
+            if b.element not in lst:
+                lst.append(b.element)
+    return out
+
+
+def dotnet_code_behind(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, str],
+                       bridges: dict | None = None) -> str:
+    """C# handlers: values/pointers, abnormal states and alarm indicators; Agile bridges via OnValChanged."""
+    bridges = bridges or {}
+    by_var = _elements_by_var(boxes)
+    ctor_extra, m = [], []
     for b in boxes:
         if b.kind != "exec":
             continue
-        e = b.element
-        n = _id(e.var)
-        p = st.priority(e.priority)
-        m += ["", f"\t\tvoid {b.name}ValueChanged(object sender, ValueChangedEventArgs e)", "\t\t{"]
-        if e.kind == "value":
-            ptr = next(x for x in boxes if x.name == f"ptr{n}")
-            trk = next(x for x in boxes if x.name == f"trk{n}")
-            lo, hi = e.range
-            low, high = (e.limits or (None, None))
-            cond = " || ".join(c for c in ((f"v < {low!r}" if low is not None else ""),
-                                           (f"v > {high!r}" if high is not None else "")) if c) or "false"
-            m += ["\t\t\tdouble v;", "\t\t\ttry { v = Convert.ToDouble(e.Value); } catch (Exception) { return; }",
-                  f"\t\t\tdouble k = (v - {lo!r}) / ({hi!r} - {lo!r});",
-                  "\t\t\tif (k < 0) k = 0; else if (k > 1) k = 1;",
-                  f"\t\t\tfloat x = (float)({trk.x!r} + k * {trk.w!r}) - 2F;",
-                  f"\t\t\tbool abnormal = {cond};",
-                  f"\t\t\tptr{n}.Bounds = new NxtControl.Drawing.RectF(x, {ptr.y!r}F, abnormal ? 6F : 4F, {ptr.h!r}F);",
-                  f"\t\t\tptr{n}.Brush = new NxtControl.Drawing.Brush(abnormal ? {_cs_color(p.color)} : {_cs_color(st.POINTER)});"]
-        elif e.kind == "state":
-            is_bool = _base(types[e.var]) == "BOOL"
-            m += ["\t\t\tstring key = e.Value == null ? \"\" : " +
-                  ("((bool)e.Value ? \"true\" : \"false\");" if is_bool else "e.Value.ToString();"),
-                  "\t\t\tstring text = key;", "\t\t\tbool abnormal = false;", "\t\t\tswitch (key)", "\t\t\t{"]
-            for k, v in e.states.items():
-                m += [f"\t\t\t\tcase \"{k}\": text = \"{v}\"; abnormal = {'true' if k in e.abnormal else 'false'}; break;"]
-            m += ["\t\t\t}", f"\t\t\tsta{n}.Text = text;",
-                  f"\t\t\tsta{n}.Brush = abnormal ? new NxtControl.Drawing.Brush({_cs_color(p.color)}) : "
-                  "new NxtControl.Drawing.Brush(\"Transparent\");",
-                  f"\t\t\tsta{n}.TextColor = abnormal ? {_cs_color(p.text_color)} : {_cs_color(st.TEXT)};"]
-        elif e.kind == "alarm":
-            if _base(types[e.var]) == "BOOL":
-                m += [f"\t\t\tint level = (e.Value != null && (bool)e.Value) ? {e.priority} : 0;"]
-            else:
-                m += ["\t\t\tint level = 0;", "\t\t\ttry { level = Convert.ToInt32(e.Value); } catch (Exception) { }"]
-            m += ["\t\t\tNxtControl.Drawing.Color c;", "\t\t\tswitch (level)", "\t\t\t{"]
-            for lvl, pr in st.PRIORITIES.items():
-                m += [f"\t\t\t\tcase {lvl}: c = {_cs_color(pr.color)}; break;"]
-            m += ["\t\t\t\tdefault: c = " + _cs_color(st.INDICATOR_IDLE) + "; break;", "\t\t\t}",
-                  f"\t\t\talm{n}.Brush = new NxtControl.Drawing.Brush(c);", f"\t\t\talm{n}.Visible = level > 0;",
-                  f"\t\t\talmTxt{n}.Text = level > 0 ? level.ToString() : \"\";", f"\t\t\talmTxt{n}.Visible = level > 0;"]
+        br = bridges.get(b.var)
+        if br is not None:
+            ctor_extra.append(f"\t\t\t{b.name}.OnValChanged += {b.name}ValChanged;")
+            m += ["", f"\t\tvoid {b.name}ValChanged(object sender, EventArgs e)", "\t\t{",
+                  f"\t\t\tobject raw = {b.name}.Val;"]
+        else:
+            m += ["", f"\t\tvoid {b.name}ValueChanged(object sender, ValueChangedEventArgs e)", "\t\t{",
+                  "\t\t\tobject raw = e.Value;"]
+        for e in by_var.get(b.var, []):
+            m += _cs_element(e, boxes, types, br, b.name)
         m.append("\t\t}")
     return (header + NL.join(["", "using System;", "using NxtControl.GuiFramework;", "", f"namespace {ns}", "{",
                               "\t/// <summary>", f"\t/// {sym}: situation-awareness symbol generated by eae-mcp.",
                               "\t/// </summary>", f"\tpublic partial class {sym} : NxtControl.GuiFramework.HMISymbol", "\t{",
                               f"\t\tpublic {sym}()", "\t\t{", "\t\t\t//",
                               "\t\t\t// The InitializeComponent() call is required for Windows Forms designer support.",
-                              "\t\t\t//", "\t\t\tInitializeComponent();", "\t\t}"] + m + ["\t}", "}", ""]))
+                              "\t\t\t//", "\t\t\tInitializeComponent();"] + ctor_extra + ["\t\t}"] + m
+                             + ["\t}", "}", ""]))
 
 
 def dotnet_resx(template: bytes, boxes: list[Box], W: int, H: int) -> bytes:
@@ -421,10 +530,13 @@ def _jc(rgb: st.RGB) -> list:
     return [rgb[0], rgb[1], rgb[2], 1]
 
 
-def ehmi_objects(boxes: list[Box], types: dict[str, str]) -> list[dict]:
+def ehmi_objects(boxes: list[Box], types: dict[str, str], bridges: dict | None = None) -> list[dict]:
+    bridges = bridges or {}
     out = []
     for b in boxes:
         n = b.name
+        if b.shape == "dynamic":
+            continue  # the eHMI bridges carry no Minimum/Maximum: no dynamic indicator on the web
         if b.kind in ("card", "track", "band", "pointer", "alarm"):
             color = {"card": st.PANEL, "track": st.TRACK, "band": st.NORMAL_BAND, "pointer": st.POINTER,
                      "alarm": st.INDICATOR_IDLE}[b.kind]
@@ -450,6 +562,11 @@ def ehmi_objects(boxes: list[Box], types: dict[str, str]) -> list[dict]:
         elif b.kind == "tick":
             out.append({"type": "NxtControl.GuiFramework.Rectangle", "name": n, "left": b.x - 1, "top": b.y,
                         "width": 2, "height": b.h, "brush": {"color": _jc(st.LIMIT)}, "pen": {"color": _jc(st.LIMIT)}})
+        elif b.kind in ("value", "text") and b.var in bridges:
+            out.append({"type": "NxtControl.GuiFramework.FreeText", "name": n, "left": b.x, "top": b.y + 3,
+                        "width": b.w, "height": 18, "text": "—", "fontSize": st.SIZE_TEXT, "fontFamily": st.FONT,
+                        "fontStyle": "normal", "textColor": _jc(st.TEXT),
+                        **({"textAlign": "right"} if b.kind == "value" else {})})
         elif b.kind in ("value", "text"):
             out.append({"type": "System.WEB.Symbols.Base.Label", "name": n, "left": b.x, "top": b.y, "width": b.w,
                         "height": b.h, "brush": {"color": "Transparent"}, "pen": {"color": "Transparent"},
@@ -463,6 +580,10 @@ def ehmi_objects(boxes: list[Box], types: dict[str, str]) -> list[dict]:
             out.append({"type": "NxtControl.GuiFramework.FreeText", "name": n, "left": b.x, "top": b.y + 3,
                         "width": b.w, "height": 18, "text": b.text, "fontSize": st.SIZE_TEXT, "fontFamily": st.FONT,
                         "fontStyle": "normal", "fontWeight": "bold", "textColor": _jc(st.TEXT)})
+        elif b.kind == "exec" and b.var in bridges:
+            # Agile bridge: invisible library symbol bound to the sub-CAT (as in SolarPlantDemo acX seDefault).
+            out.append({"type": bridges[b.var].web_class, "name": n, "left": 0, "top": 0, "width": 1, "height": 1,
+                        "tagName": bridges[b.var].path})
         elif b.kind == "exec":
             out.append({"type": "System.WEB.Symbols.Base.Execute", "name": n, "left": None, "top": None,
                         "_events_": [{"name": "valueChanged", "eventName": f"{n}_valueChanged"}], "tagName": b.var,
@@ -474,49 +595,77 @@ def _ts_color(rgb: st.RGB) -> str:
     return f"[{rgb[0]}, {rgb[1]}, {rgb[2]}, 1]"
 
 
-def ehmi_ts(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, str]) -> str:
+def _ts_element(e: ElementSpec, boxes: list[Box], types: dict[str, str], bridged: bool) -> list[str]:
+    n = _id(e.var)
+    p = st.priority(e.priority)
     m: list[str] = []
+    if e.kind == "value":
+        m += ["      {", "        const v = Number(raw);", "        if (!isNaN(v)) {"]
+        if bridged:
+            m += [f"          this.put(this.find('val{n}'), 'text', String(Math.round(v * 100) / 100));"]
+        ptr = next((x for x in boxes if x.name == f"ptr{n}" and x.shape != "dynamic"), None)
+        trk = next((x for x in boxes if x.name == f"trk{n}" and x.shape != "dynamic"), None)
+        if ptr is not None:
+            lo, hi = e.range
+            m += [f"          const k = Math.min(1, Math.max(0, (v - {lo!r}) / ({hi!r} - {lo!r})));",
+                  f"          const abnormal = {_limit_cond(e)};", f"          const ptr = this.find('ptr{n}');",
+                  f"          this.put(ptr, 'left', {trk.x!r} + k * {trk.w!r} - 2);",
+                  f"          this.put(ptr, 'width', abnormal ? 6 : {ptr.w!r});",
+                  f"          this.put(ptr, 'brush', {{ color: abnormal ? {_ts_color(p.color)} : {_ts_color(st.POINTER)} }});"]
+        m += ["        }", "      }"]
+    elif e.kind == "state":
+        m += ["      {", "        const key = raw === true ? 'true' : raw === false ? 'false' : String(raw);",
+              f"        const texts: any = {json.dumps(e.states)};",
+              f"        const abnormalKeys: string[] = {json.dumps(e.abnormal)};",
+              "        const abnormal = abnormalKeys.indexOf(key) >= 0;", f"        const lbl = this.find('sta{n}');",
+              "        this.put(lbl, 'text', texts[key] !== undefined ? texts[key] : key);",
+              f"        this.put(lbl, 'textColor', abnormal ? {_ts_color(p.color)} : {_ts_color(st.TEXT)});", "      }"]
+    elif e.kind == "alarm":
+        colors = json.dumps({str(k): list(v.color) + [1] for k, v in st.PRIORITIES.items()})
+        m += ["      {"]
+        if _base(types[e.var]) == "BOOL":
+            m += [f"        const level = raw === true || raw === 'true' ? {e.priority} : 0;"]
+        else:
+            m += ["        const level = Math.round(Number(raw)) || 0;"]
+        m += [f"        const colors: any = {colors};", f"        const shape = this.find('alm{n}');",
+              f"        const text = this.find('almTxt{n}');",
+              "        this.put(shape, 'visible', level > 0);", "        this.put(text, 'visible', level > 0);",
+              "        if (level > 0) {", "          this.put(shape, 'brush', { color: colors[String(level)] || colors['1'] });",
+              "          this.put(text, 'text', String(level));", "        }", "      }"]
+    elif e.kind == "text" and bridged:
+        m += [f"      this.put(this.find('txt{n}'), 'text', raw === null || raw === undefined ? '' : String(raw));"]
+    return m
+
+
+def ehmi_ts(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, str],
+            bridges: dict | None = None) -> str:
+    bridges = bridges or {}
+    by_var = _elements_by_var(boxes)
+    m: list[str] = []
+    bind: list[str] = []
     for b in boxes:
         if b.kind != "exec":
             continue
-        e = b.element
-        n = _id(e.var)
-        p = st.priority(e.priority)
-        m += ["", f"    protected {b.name}_valueChanged(sender: any, ea: any) {{", "      const raw = this.ev(sender, ea);"]
-        if e.kind == "value":
-            ptr = next(x for x in boxes if x.name == f"ptr{n}")
-            trk = next(x for x in boxes if x.name == f"trk{n}")
-            lo, hi = e.range
-            low, high = (e.limits or (None, None))
-            cond = " || ".join(c for c in ((f"v < {low!r}" if low is not None else ""),
-                                           (f"v > {high!r}" if high is not None else "")) if c) or "false"
-            m += ["      const v = Number(raw);", "      if (isNaN(v)) return;",
-                  f"      const k = Math.min(1, Math.max(0, (v - {lo!r}) / ({hi!r} - {lo!r})));",
-                  f"      const abnormal = {cond};",
-                  f"      const ptr = this.find('ptr{n}');",
-                  f"      this.put(ptr, 'left', {trk.x!r} + k * {trk.w!r} - 2);",
-                  f"      this.put(ptr, 'width', abnormal ? 6 : {ptr.w!r});",
-                  f"      this.put(ptr, 'brush', {{ color: abnormal ? {_ts_color(p.color)} : {_ts_color(st.POINTER)} }});"]
-        elif e.kind == "state":
-            table = json.dumps(e.states)
-            m += ["      const key = raw === true ? 'true' : raw === false ? 'false' : String(raw);",
-                  f"      const texts: any = {table};", f"      const abnormalKeys: string[] = {json.dumps(e.abnormal)};",
-                  "      const abnormal = abnormalKeys.indexOf(key) >= 0;",
-                  f"      const lbl = this.find('sta{n}');",
-                  "      this.put(lbl, 'text', texts[key] !== undefined ? texts[key] : key);",
-                  f"      this.put(lbl, 'textColor', abnormal ? {_ts_color(p.color)} : {_ts_color(st.TEXT)});"]
-        elif e.kind == "alarm":
-            colors = json.dumps({str(k): list(v.color) + [1] for k, v in st.PRIORITIES.items()})
-            if _base(types[e.var]) == "BOOL":
-                m += [f"      const level = raw === true || raw === 'true' ? {e.priority} : 0;"]
-            else:
-                m += ["      const level = Math.round(Number(raw)) || 0;"]
-            m += [f"      const colors: any = {colors};", f"      const shape = this.find('alm{n}');",
-                  f"      const text = this.find('almTxt{n}');",
-                  "      this.put(shape, 'visible', level > 0);", "      this.put(text, 'visible', level > 0);",
-                  "      if (level > 0) {", "        this.put(shape, 'brush', { color: colors[String(level)] || colors['1'] });",
-                  "        this.put(text, 'text', String(level));", "      }"]
+        if b.var in bridges:
+            bind.append(f"      this.bridge('{b.name}', (raw: any) => this.{b.name}_update(raw));")
+        else:
+            m += ["", f"    protected {b.name}_valueChanged(sender: any, ea: any) {{",
+                  f"      this.{b.name}_update(this.ev(sender, ea));", "    }"]
+        m += ["", f"    private {b.name}_update(raw: any): void {{"]
+        for e in by_var.get(b.var, []):
+            m += _ts_element(e, boxes, types, b.var in bridges)
         m.append("    }")
+    load = []
+    if bind:
+        load = ["", "    load(options: any): this {", "      // do not delete next 2 lines", "      options = options || {};",
+                "      super.load(options);"] + bind + ["      return this;", "    }", "",
+                "    private bridge(name: string, update: any): void {", "      const b: any = this.find(name);",
+                "      if (!b) return;",
+                "      const read = (snap: any) => update(snap && snap.value !== undefined ? snap.value : "
+                "(b.getValue ? b.getValue() : null));",
+                "      if (b.setValueChangedHandler) b.setValueChangedHandler((sender: any, snap: any) => read(snap));",
+                "      else if (b.valueChanged && b.valueChanged.add) b.valueChanged.add((sender: any, snap: any) => read(snap));",
+                "    }"]
     helpers = ["", "    private ev(sender: any, ea: any): any {",
                "      if (ea) { if (ea.value !== undefined) return ea.value; if (ea.Value !== undefined) return ea.Value; }",
                "      if (sender) { if (sender.value !== undefined) return sender.value; "
@@ -529,7 +678,7 @@ def ehmi_ts(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, s
                               "     * @default", "     */", f"    @System.DefaultValue('{ns}.{sym}')",
                               "    protected type: string;", "", "    /**** DO NOT DELETE CONSTRUCTOR *****/",
                               "    constructor() {", "      // do not delete next line", "      super();", "    }"]
-                             + m + helpers + ["  } ", "}", ""]))
+                             + load + m + helpers + ["  } ", "}", ""]))
 
 
 # -- design review gate -----------------------------------------------------------------------------

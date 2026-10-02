@@ -31,6 +31,7 @@ PROP_CS = re.compile(r"^\s*this\.(?:(\w+)\.)?(\w+) = (.*);\s*$", re.M)
 ANALOG = re.compile(r"Bar|Gauge|Tracker|Slider|Meter|Analog|Level", re.I)
 TREND = re.compile(r"Trend|Chart|Sparkline", re.I)
 NUMERIC = re.compile(r"Label|TextBox|Text|Value|Indication", re.I)
+BRIDGE = re.compile(r"\.(s|se)Val(Changed|Control)$")
 
 DENSITY = {1: 80, 2: 150, 3: 250, 4: 400}  # objects per display before a warning (heuristic per level)
 ALARM_HUES = {"red", "orange", "yellow", "magenta"}
@@ -306,8 +307,13 @@ def review_display(d: Display, theme: dict, level: int | None = None) -> list[Fi
                          f"{'level ' + str(level) if level else 'an operating display'}: ≤ {limit}). Move detail to a "
                          "lower-level display or a faceplate.", "ISA-101: display hierarchy and density"))
     # HP-09 values without context / trends
-    numeric = [o for o in d.bound if NUMERIC.search(d.objects.get(o, "")) and not ANALOG.search(d.objects.get(o, ""))]
+    # Agile bridge symbols (HMI_Indication_Real.sValChanged, seValChanged/seValControl) are invisible data
+    # sources, not number displays.
+    numeric = [o for o in d.bound if NUMERIC.search(d.objects.get(o, "")) and not ANALOG.search(d.objects.get(o, ""))
+               and not BRIDGE.search(d.objects.get(o, ""))]
     analog = [o for o, t in d.objects.items() if ANALOG.search(t)]
+    # Code-driven moving indicators (eae-mcp SA symbols: span "trk…" + pointer "ptr…") count as analog.
+    analog += [o for o in d.objects if o.startswith("ptr") and f"trk{o[3:]}" in d.objects]
     trends = [o for o, t in d.objects.items() if TREND.search(t)]
     if len(numeric) >= 4 and not analog:
         f.append(Finding("HP-09", "info", f"{len(numeric)} bound values are shown as numbers only. Show key values "

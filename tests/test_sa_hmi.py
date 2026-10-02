@@ -78,7 +78,7 @@ def test_symbol_build_both_technologies(plant, library_store, tmp_path):
 def test_design_validation(plant, library_store):
     sol = _sol(plant, library_store)
     bad = [
-        (sb.ElementSpec("value", "Nope"), "not an input"),
+        (sb.ElementSpec("value", "Nope"), "neither an IThis input"),
         (sb.ElementSpec("value", "Running"), "needs a number"),
         (sb.ElementSpec("value", "Flow", range=(0, 100), normal=(50, 150)), "outside range"),
         (sb.ElementSpec("value", "Flow", normal=(1, 2)), "need a range"),
@@ -143,3 +143,85 @@ def test_suggest_draft_never_invents_limits():
 def test_knowledge_has_description_workflow():
     hits = services.knowledge_search("from description to HMI", 2)
     assert any("eae_hmi_design_suggest" in h["text"] for h in hits)
+
+
+AGILE = sb.SymbolDesign("FT-101 Flow", [
+    sb.ElementSpec("alarm", "Equipment.IA", priority=2),
+    sb.ElementSpec("value", "Equipment.IX", label="Flow"),
+    sb.ElementSpec("value", "Equipment.CPHH", label="HH setpoint", unit="m3/h", range=(0, 200), normal=(20, 150),
+                   limits=(None, 180)),
+    sb.ElementSpec("state", "Equipment.ISIM", label="Source", states={"true": "Simulated", "false": "Field"},
+                   abnormal=["true"], priority=3),
+    sb.ElementSpec("text", "AssetName", label="Tag")])
+
+
+def _bridge_stubs(sol, cat_name, design) -> str:
+    """C# stubs of the Agile bridge symbols used by a design, from what agile_blocks learned."""
+    from eae_mcp.hmi import agile_blocks as ab
+
+    cat = sol.cats[sol.find_type(cat_name).qualified_name]
+    seen, out = set(), ["using System;"]
+    for e in design.elements:
+        br = ab.bridge(sol, cat, e.var)
+        if br is None or br.net_class in seen:
+            continue
+        seen.add(br.net_class)
+        ns, cls = br.net_class.rsplit(".", 1)
+        props = " ".join(f"public {br.val_type if p in ('Val', 'ValMinimum', 'ValMaximum') else 'string' if p == 'ValUnits' else 'byte'}"
+                         f" {p} {{ get; set; }}" for p in sorted(br.props))
+        out.append(f"namespace {ns} {{ public class {cls} : NxtControl.GuiFramework.Shape {{ public void BeginInit() {{}} "
+                   "public void EndInit() {} public NxtControl.Drawing.Matrix2D DesignMatrix { get; set; } "
+                   "public uint SecurityToken { get; set; } public string TagName { get; set; } "
+                   f"public event EventHandler OnValChanged; {props} }} }}")
+    return "\n".join(out)
+
+
+def test_agile_symbol_build(solar_dir, tmp_path):
+    root = tmp_path / "s"
+    shutil.copytree(solar_dir, root)
+    sol = load_solution(root)
+    cs = sa_tools.build_symbol(sol, "acFlowTransmitter_v1_0", AGILE)
+    cs.apply()
+    base = root / "SE.Agile/HMI/acFlowTransmitter_v1_0/acFlowTransmitter_v1_0_sSA.cnv"
+    designer = Path(f"{base}.Designer.cs").read_bytes().decode("utf-8-sig")
+    assert "new SE.Agile.Symbols.HMI_Indication_Real_v1_0.sValChanged()" in designer
+    assert 'this.xEquipment_IX.TagName = "Equipment.IX";' in designer
+    code = Path(f"{base}.cs").read_text()
+    assert "xEquipment_IX.OnValChanged += xEquipment_IXValChanged;" in code and "xEquipment_IX.ValMinimum" in code
+    web = (root / "SE.Agile/WEB/acFlowTransmitter_v1_0/acFlowTransmitter_v1_0_seSA.sym.json").read_text(encoding="utf-8-sig")
+    assert '"type": "SE.Agile.Symbols.HMI_Control_Real_v1_0.seValControl"' in web and '"tagName": "Equipment.CPHH"' in web
+    ws = services.Workspace(Config(roots=[]))
+    s = ws.open(str(root))
+    for name in ("sSA", "seSA"):
+        r = services.hmi_review(s, ws, name=f"acFlowTransmitter_v1_0.{name}")
+        assert r["displays"][0]["style"] == "agile" and r["displays"][0]["findings"] == []
+        assert r["cat_reviews"][0]["style"] == "agile"
+        assert not [f for f in r["cat_reviews"][0]["findings"] if f["rule"] == "BIND-01"]
+    if shutil.which("mcs"):
+        stubs = tmp_path / "bridges.cs"
+        stubs.write_text(_bridge_stubs(sol, "acFlowTransmitter_v1_0", AGILE))
+        out = subprocess.run(["mcs", "-target:library", "-nowarn:67,169,414,649,162,219", f"-out:{tmp_path / 'a.dll'}",
+                              str(HERE / "stubs/eae_stubs.cs"), str(stubs), f"{base}.Designer.cs", f"{base}.cs"],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stdout + out.stderr
+    if shutil.which("tsc"):
+        ts = tmp_path / "sym.ts"
+        ts.write_text((root / "SE.Agile/WEB/acFlowTransmitter_v1_0/acFlowTransmitter_v1_0_seSA.sym.ts")
+                      .read_text(encoding="utf-8-sig"))
+        stub = tmp_path / "stubs.d.ts"
+        stub.write_text("declare namespace NxtControl.GuiFramework { class RuntimeSymbol { constructor(); "
+                        "find(name: string): any; load(options: any): this; } }\n"
+                        "declare namespace System { function DefaultValue(v: any): any; }\n")
+        out = subprocess.run(["tsc", "--noEmit", "--experimentalDecorators", "--target", "es2017", "--strict", "false",
+                              "--noImplicitAny", "true", str(stub), str(ts)], capture_output=True, text=True)
+        assert out.returncode == 0, out.stdout + out.stderr
+
+
+def test_agile_paths_are_checked(solar_dir, tmp_path):
+    root = tmp_path / "s"
+    shutil.copytree(solar_dir, root)
+    sol = load_solution(root)
+    with pytest.raises(EditError, match="neither an IThis input"):
+        sa_tools.build_symbol(sol, "acFlowTransmitter_v1_0", sb.SymbolDesign("X", [sb.ElementSpec("value", "Equipment.NOPE")]))
+    with pytest.raises(EditError, match="a value element needs a number"):
+        sa_tools.build_symbol(sol, "acFlowTransmitter_v1_0", sb.SymbolDesign("X", [sb.ElementSpec("value", "Equipment.IA")]))

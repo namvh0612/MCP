@@ -35,23 +35,30 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
     hmi_td = next((t for t in sol.types.values() if t.path == hmi_rel), None)
     if hmi_td is None:
         raise EditError(f"CAT {td.name} has no HMI interface type.")
-    from .style import HMI_BLOCK
-    blocks = {s.name: s.type for s in cat.sub_cats if HMI_BLOCK.match(s.type)}
+    from . import agile_blocks as ab
     ithis = {v.name for v in hmi_td.interface.input_vars}
-    on_blocks = [e.var for e in design.elements if e.var in blocks and e.var not in ithis]
-    if on_blocks:
-        raise EditError(
-            f"CAT {td.name} is Agile style: {', '.join(on_blocks)} are HMI blocks "
-            f"({', '.join(sorted({blocks[v] for v in on_blocks}))}), not IThis variables. The SA generator draws "
-            "basic-style symbols (widgets bound to IThis). For an Agile CAT either embed the blocks' own symbols "
-            "(edit the symbol in EAE) or add these signals to IThis with eae_fb_update_interface (that mixes "
-            "styles, reported as STY-01 by eae_hmi_review).")
+    bridges = {}
+    for e in design.elements:
+        if e.var in ithis or e.var in bridges:
+            continue
+        br = ab.bridge(sol, cat, e.var)
+        if br is None:
+            subs = ", ".join(s.name for s in cat.sub_cats) or "none"
+            raise EditError(f"'{e.var}' is neither an IThis input of {td.name} nor the path of an Agile HMI block "
+                            f"(sub-CATs: {subs}; nested paths like Equipment.I are allowed).")
+        if technology in ("hmi", "both") and not br.net_class:
+            raise EditError(f"{e.var}: block {br.block} has no .NET bridge symbol sValChanged.")
+        bridges[e.var] = br
     try:
-        warnings = sb.check_design(design, hmi_td.interface, technology)
+        warnings = sb.check_design(design, hmi_td.interface, technology, bridges)
     except (sb.DesignError, ValueError) as e:
         raise EditError(str(e)) from e
     types = {v.name: v.type for v in hmi_td.interface.input_vars}
-    boxes, W, H = sb.layout(design)
+    types.update({var: sb.PSEUDO_IEC[br.val_type] for var, br in bridges.items()})
+    boxes, W, H = sb.layout(design, bridges)
+    signal_vars = [e.var for e in design.elements if e.var in ithis and e.var != "AssetName"]
+    if bridges and signal_vars:
+        warnings.append("info: this symbol mixes IThis variables and Agile HMI blocks (STY-01); prefer one style.")
     now = now or _dt.datetime.now()
     header = cg.header(now)
     proj_dir = cat.cfg_file.rsplit("/", 2)[0]
@@ -70,10 +77,11 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
             add_symbol(sol, n, symbol, "hmi", now=now, cs=cs)
         base = f"{parent}HMI/{n}/{n}_{symbol}"
         sym_ns = f"{cg.ns_root(ns)}.Symbols.{n}"
-        designer = sb.dotnet_designer(header, sym_ns, symbol, boxes, types, W, H)
+        designer = sb.dotnet_designer(header, sym_ns, symbol, boxes, types, W, H, bridges)
         gate_issues += sb.gate("hmi", symbol, designer, None)
         _put(cs, sol.root, f"{base}.cnv.Designer.cs", designer.encode("utf-8"))
-        _put(cs, sol.root, f"{base}.cnv.cs", sb.dotnet_code_behind(header, sym_ns, symbol, boxes, types).encode("utf-8"))
+        _put(cs, sol.root, f"{base}.cnv.cs", sb.dotnet_code_behind(header, sym_ns, symbol, boxes, types,
+                                                                                 bridges).encode("utf-8"))
         _put(cs, sol.root, f"{base}.cnv.resx", sb.dotnet_resx(w.template("cat/cnv.resx"), boxes, W, H))
     if technology in ("ehmi", "both"):
         w.check_identifier(web_symbol, "web symbol name")
@@ -82,14 +90,14 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
         if web_symbol not in existing:
             add_symbol(sol, n, web_symbol, "ehmi", now=now, cs=cs)
         base = f"{parent}WEB/{n}/{n}_{web_symbol}"
-        data = {"objects": sb.ehmi_objects(boxes, types),
+        data = {"objects": sb.ehmi_objects(boxes, types, bridges),
                 "_design_": {"width": W, "height": H, "background": "CanvasBackColor", "overlay": "Transparent"}}
         gate_issues += sb.gate("ehmi", web_symbol, None, data)
         _put(cs, sol.root, f"{base}.sym.json", jsonrt.new(data))
         ehmi_header = header.replace(" * User:  ", " * User:    ")
         web_ns = f"{'WEB.Main' if ns == 'Main' else ns}.Symbols.{n}"
         _put(cs, sol.root, f"{base}.sym.ts", b"\xef\xbb\xbf" + sb.ehmi_ts(ehmi_header, web_ns, web_symbol, boxes,
-                                                                         types).encode("utf-8"))
+                                                                         types, bridges).encode("utf-8"))
     if gate_issues:
         raise EditError("Generated symbol fails the HMI review (please report): "
                         + json.dumps(gate_issues, default=str)[:800])

@@ -59,6 +59,7 @@ Open `C:\EAE\EAE_MCP_M5` in EAE 26 and record each result in `notes.txt`:
 | E14 | HMI › Build and eHMI › Build compile the generated code-behind (.cnv.cs / .sym.ts) without errors | ☐ |
 | E15 | Runtime (simulator): the pointer moves with Value; above 90 it turns orange and widens; an alarm shows shape + color + number | ☐ |
 | E16 | Displays `PumpsSA` (HMI and eHMI) show the title, the "Pumps" group and PUMP1 | ☐ |
+| E17 | Optional, Agile: on a copy of SolarPlantDemo ask *"build an SA symbol for acFlowTransmitter_v1_0 from its HMI blocks"* (`eae_hmi_design_suggest` → `eae_hmi_symbol_build`); `sSA` opens, HMI › Build compiles, and at runtime the value/span follow `Equipment.IX` | ☐ |
 | E12 | Draw something in `sBig` and `seBig`, Save All, close EAE, zip as `M5_after_eae.zip` | ☐ |
 
 ## 4. Send back

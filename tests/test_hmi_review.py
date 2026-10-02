@@ -25,7 +25,9 @@ def test_solar_findings(solar_dir):
     r = _review(solar_dir, level=2)
     by = {d["display"]: {f["rule"] for f in d["findings"]} for d in r["displays"]}
     assert {"HP-02", "HP-05", "HP-06"} <= by["hmi canvas Architecture"]
-    assert {"HP-04", "HP-09"} <= by["hmi canvas ControlPage"]
+    assert "HP-04" in by["hmi canvas ControlPage"]
+    # its 38 HMI_Indication_*.sValChanged objects are invisible Agile bridges, not numbers on screen
+    assert "HP-09" not in by["hmi canvas ControlPage"]
     assert "HP-02" in by["ehmi canvas Architecture"]
 
 
