@@ -245,7 +245,11 @@ def update_interface(sol: Solution, name: str, add_events: list[tuple[str, Event
         for v in vars_:
             xmlrt.insert_child(ev, w._el("With", [("Var", v)]))
     _check_interface_xml(itf_el)
-    return _finish(cs, sol, td.path)
+    _finish(cs, sol, td.path)
+    if td.kind == "cat_hmi":
+        from .cat_edit import refresh_hmi_code
+        refresh_hmi_code(cs, sol, td.path)
+    return cs
 
 
 def _check_interface_xml(itf_el) -> None:

@@ -309,3 +309,195 @@ def _check(cs: ChangeSet, sol: Solution, *rels: str) -> None:
 
     for rel in rels:
         parse_type_element(xmlrt.parse_bytes(cs.changes[rel].new).root, rel)
+
+
+def refresh_hmi_code(cs: ChangeSet, sol: Solution, hmi_rel: str, now: _dt.datetime | None = None) -> None:
+    """After the IThis interface (<Cat>_HMI.fbt) changed: regenerate <Cat>.event.cs and every .NET symbol's
+    .cnv.xml mapping, and keep <Cat>_HMI.opcua.xml in step (new variables added disabled, removed ones dropped).
+    """
+    import os
+
+    from .types import parse_type_element
+
+    cat = next((c for c in sol.cats.values() if c.hmi_interface_file and
+                os.path.normpath(f"{c.cfg_file.rsplit('/', 2)[0]}/{c.hmi_interface_file}") == os.path.normpath(hmi_rel)),
+               None)
+    if cat is None or hmi_rel not in cs.changes:
+        return
+    td = sol.types.get(cat_qualified(sol, cat))
+    itf = parse_type_element(xmlrt.parse_bytes(cs.changes[hmi_rel].new).root, hmi_rel).interface
+    for v in itf.input_vars + itf.output_vars:
+        cg.net_type(v.type)
+    proj_dir = cat.cfg_file.rsplit("/", 2)[0]
+
+    def rel(p: str) -> str:
+        return os.path.normpath(f"{proj_dir}/{p}").replace("\\", "/")
+
+    def put(path: str, data: bytes) -> None:
+        old = (cs.root / path).read_bytes() if (cs.root / path).exists() else None
+        if old != data:
+            from .changes import FileChange
+            cs.changes[path] = FileChange(path, old, data)
+
+    dotnet = [s for s in cat.symbols if s.technology == "hmi"]
+    event_file = next((g for g in cat.generated_files if g.endswith(".event.cs")), None)
+    if event_file and td is not None:
+        put(rel(event_file), cg.event_cs(td.name, td.namespace, itf,
+                                         [cg.SymbolRef(s.name, s.is_faceplate) for s in dotnet], now).encode())
+    for s in dotnet:
+        mapping = rel(s.file).replace(".cnv.cs", ".cnv.xml")
+        if (cs.root / mapping).exists():
+            put(mapping, build_mapping(itf))
+    opcua = hmi_rel[: -len(".fbt")] + ".opcua.xml"
+    if (cs.root / opcua).exists():
+        _sync_hmi_opcua(cs, opcua, itf)
+        cs.commit_docs()
+
+
+def cat_qualified(sol: Solution, cat) -> str:
+    return next(q for q, c in sol.cats.items() if c is cat)
+
+
+def _sync_hmi_opcua(cs: ChangeSet, rel: str, itf: Interface) -> None:
+    from .types import children
+
+    xf = cs.doc(rel)
+    root = xf.root
+    wanted = [v for v in itf.input_vars + itf.output_vars if v.name not in HMI_RESERVED and v.id]
+    have = {e.get("UID"): e for e in children(root, "OPCUAVariable")}
+    for uid, el in have.items():
+        if uid not in {v.id for v in wanted}:
+            xmlrt.remove_child(el)
+    for v in wanted:
+        if v.id in have:
+            continue
+        el = w._el("OPCUAVariable", [("UID", v.id), ("Enabled", "false")], ns=w._ns(root))
+        ext = w._sub(w._sub(el, "Extensions"), "Extension")
+        w._sub(ext, "RTAddress").text = "V1;${VariableFullPath}"
+        xmlrt.insert_child(root, el)
+
+
+# -- add a symbol / faceplate to an existing CAT -------------------------------------------------------
+
+
+def _cat_of(sol: Solution, name: str):
+    td = sol.find_type(name)
+    if td is None or td.kind != "cat":
+        raise EditError(f"'{name}' is not a CAT of this solution.")
+    cat = sol.cats.get(td.qualified_name)
+    if cat is None:
+        raise EditError(f"CAT {td.qualified_name} has no .cfg manifest.")
+    return td, cat
+
+
+def _project_at(sol: Solution, kind: str, directory: str):
+    found = [p for p in sol.projects_of(kind) if p.path.rsplit("/", 1)[0].lower() == directory.lower()]
+    if not found:
+        raise EditError(f"No {kind.upper()} project in {directory}/.")
+    return found[0]
+
+
+def add_symbol(sol: Solution, cat_name: str, name: str, technology: str = "hmi", faceplate: bool = False,
+               now: _dt.datetime | None = None) -> ChangeSet:
+    """Add a .NET HMI symbol or faceplate (technology='hmi') or an eHMI symbol ('ehmi') to a CAT."""
+    import os
+
+    from .types import children, local
+
+    td, cat = _cat_of(sol, cat_name)
+    w.check_identifier(name, "symbol name")
+    if any(s.name == name for s in cat.symbols):
+        raise EditError(f"CAT {td.name} already has a symbol '{name}'.")
+    if technology not in ("hmi", "ehmi"):
+        raise EditError("technology must be 'hmi' (.NET HMI) or 'ehmi' (web).")
+    if faceplate and technology != "hmi":
+        raise EditError("eHMI faceplates are not supported (no sample to learn the format from).")
+    hmi_rel = os.path.normpath(f"{cat.cfg_file.rsplit('/', 2)[0]}/{cat.hmi_interface_file}").replace("\\", "/")
+    hmi_td = next((t for t in sol.types.values() if t.path == hmi_rel), None)
+    if hmi_td is None:
+        raise EditError(f"CAT {td.name} has no HMI interface type ({hmi_rel}).")
+    now = now or _dt.datetime.now()
+    stamp = _stamp(now)
+    ns = td.namespace or "Main"
+    proj_dir = cat.cfg_file.rsplit("/", 2)[0]
+    parent = proj_dir.rsplit("/", 1)[0] + "/" if "/" in proj_dir else ""
+    n = td.name
+    cs = ChangeSet(sol.root, f"add {'faceplate' if faceplate else technology + ' symbol'} {name} to CAT {n}")
+    cfg = cs.doc(cat.cfg_file)
+    root = cfg.root
+    kids = children(root, "HMIInterface")
+    if not kids:
+        raise EditError(f"{cat.cfg_file} has no <HMIInterface>.")
+    hmi_el = kids[0]
+    entries = children(hmi_el)
+
+    if technology == "hmi":
+        proj = _project_at(sol, "hmi", f"{parent}HMI")
+        base = f"{parent}HMI/{n}/{n}_{name}"
+        vals = dict(stamp, NS=cg.ns_root(ns), CAT=n, SYM=name)
+        cnv_cs = _fill("cnv.cs", **vals)
+        designer = _fill("cnv.Designer.cs", **vals)
+        if faceplate:
+            cnv_cs = (cnv_cs.replace(b".Symbols.", b".Faceplates.")
+                      .replace(b"NxtControl.GuiFramework.HMISymbol", b"NxtControl.GuiFramework.HMIFaceplate"))
+            designer = designer.replace(b".Symbols.", b".Faceplates.").replace(
+                f'this.Name = "{name}";'.encode(),
+                f'this.Name = "{name}";\r\n\t\t\tthis.Size = new System.Drawing.Size(400, 300);'.encode())
+        cs.create(f"{base}.cnv.cs", cnv_cs)
+        cs.create(f"{base}.cnv.Designer.cs", designer)
+        cs.create(f"{base}.cnv.resx", w.template("cat/cnv.resx"))
+        if not faceplate:
+            cs.create(f"{base}.cnv.xml", build_mapping(hmi_td.interface))
+        cs.create(f"{base}.doc.xml", w.template("doc.xml"))
+        hp = cs.doc(proj.path)
+        cnv = f"{n}_{name}.cnv.cs"
+        w.add_project_item(hp, "Compile", f"{n}\\{cnv}", [])
+        w.add_project_item(hp, "Compile", f"{n}\\{n}_{name}.cnv.Designer.cs", [("DependentUpon", cnv)])
+        w.add_project_item(hp, "EmbeddedResource", f"{n}\\{n}_{name}.cnv.resx", [("DependentUpon", cnv)])
+        if not faceplate:
+            w.add_project_item(hp, "EmbeddedResource", f"{n}\\{n}_{name}.cnv.xml", [("DependentUpon", cnv)])
+        w.add_project_item(hp, "None", f"{n}\\{n}_{name}.doc.xml", [("DependentUpon", cnv)])
+        hmi = f"..\\HMI\\{n}\\{n}_{name}"
+        el = w._el("Symbol", [("Name", name), ("FileName", f"{hmi}.cnv.cs"), ("DocFile", f"{hmi}.doc.xml"),
+                              ("IsFaceplate", "true" if faceplate else None)], ns=w._ns(root))
+        for ext in ("cnv.Designer.cs", "cnv.resx") + (() if faceplate else ("cnv.xml",)):
+            w._sub(el, "DependentFiles").text = f"{hmi}.{ext}"
+        after = [i for i, e in enumerate(entries) if local(e) == "Symbol"]
+        before = [i for i, e in enumerate(entries) if local(e) in ("WebSymbol", "MetaFile")]
+        xmlrt.insert_child(hmi_el, el, after[-1] + 1 if after else (before[0] if before else None))
+
+        # Generated code follows the symbol list.
+        symbols = [cg.SymbolRef(s.name, s.is_faceplate) for s in cat.symbols if s.technology == "hmi"]
+        symbols.append(cg.SymbolRef(name, faceplate))
+        for gen in cat.generated_files:
+            path = os.path.normpath(f"{proj_dir}/{gen}").replace("\\", "/")
+            if gen.endswith(".event.cs"):
+                data = cg.event_cs(n, ns, hmi_td.interface, symbols, now)
+            elif gen.endswith(".def.cs"):
+                data = cg.def_cs(n, ns, symbols, now)
+            else:
+                continue
+            _put(cs, path, data.encode())
+    else:
+        proj = _project_at(sol, "web", f"{parent}WEB")
+        p = CatPaths(n, proj_dir + "/", None, proj.path, f"{parent}HMI/{n}/", f"{parent}WEB/{n}/")
+        for rel, data in _web_symbol_files(p, _web_root(ns), name, stamp).items():
+            cs.create(rel, data)
+        _register_web_symbol(cs, p, name)
+        web = f"..\\WEB\\{n}\\{n}_{name}"
+        el = w._el("WebSymbol", [("Name", name), ("FileName", f"{web}.sym.ts")], ns=w._ns(root))
+        for ext in ("sym.json", "sym.xml", "user.cs"):
+            w._sub(el, "DependentFiles").text = f"{web}.{ext}"
+        after = [i for i, e in enumerate(entries) if local(e) in ("Symbol", "WebSymbol")]
+        before = [i for i, e in enumerate(entries) if local(e) == "MetaFile"]
+        xmlrt.insert_child(hmi_el, el, after[-1] + 1 if after else (before[0] if before else None))
+    cs.commit_docs()
+    return cs
+
+
+def _put(cs: ChangeSet, path: str, data: bytes) -> None:
+    from .changes import FileChange
+
+    old = (cs.root / path).read_bytes() if (cs.root / path).exists() else None
+    if old != data:
+        cs.changes[path] = FileChange(path, old, data)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 
 from . import services
 from .model import Algorithm, DataTypeDef, ECAction, ECState, ECTransition, EnumValue, Event, Interface, Var
-from .project import cat_edit, edit, network_edit
+from .hmi import ehmi_edit
+from .project import cat_edit, edit, network_edit, opcua_edit
 
 CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 MODIFY = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
@@ -245,6 +246,58 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         hmi = _interface(hmi_event_inputs, hmi_event_outputs, hmi_input_vars, hmi_output_vars)
         return change(solution, lambda s: cat_edit.create_cat(s, name, itf, hmi, symbol, web_symbol or None, folder,
                                                               library, comment), dry_run)
+
+    # -- M4: eHMI canvases ------------------------------------------------------------------------
+
+    @mcp.tool(annotations=CREATE)
+    def eae_ehmi_canvas_create(device: str, name: str, resolution: str | None = None, title: str = "",
+                               dry_run: bool = True, solution: str | None = None) -> dict:
+        """Create an eHMI (web) canvas on a device (eHMI canvases are per device) and add it to the
+        top level of a canvas resolution (default: the first one with a real size, e.g. 1024x768).
+        The device must already have one eHMI canvas made in EAE (that sets up its resolution list)."""
+        return change(solution, lambda s: ehmi_edit.create_canvas(s, device, name, resolution, title), dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_ehmi_place_symbol(canvas: str, instance: str, symbol: str | None = None, left: float | None = None,
+                              top: float | None = None, width: float | None = None, height: float | None = None,
+                              name: str | None = None, application: str | None = None, dry_run: bool = True,
+                              solution: str | None = None) -> dict:
+        """Show a CAT instance of an application on an eHMI canvas using one of its eHMI symbols
+        (default: the CAT's first web symbol). canvas: 'Canvas1' or '<Device>/Canvas1'. The object
+        is bound to the instance by its ID (tagName). Size defaults to the symbol's design size;
+        position defaults to below the existing objects. Warns if the instance is not mapped to the
+        canvas's device."""
+        return change(solution, lambda s: ehmi_edit.place_symbol(s, canvas, instance, symbol, left, top, width,
+                                                                 height, name, application), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_ehmi_update_object(canvas: str, name: str, properties: dict[str, Any], dry_run: bool = True,
+                               solution: str | None = None) -> dict:
+        """Change properties of an eHMI canvas object, e.g. {"left": 40, "top": 20, "width": 200}.
+        Keys are the .cnv.json keys shown by eae_hmi_describe; null removes a key."""
+        return change(solution, lambda s: ehmi_edit.update_object(s, canvas, name, properties), dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_cat_add_symbol(cat: str, name: str, technology: Literal["hmi", "ehmi"] = "hmi", faceplate: bool = False,
+                           dry_run: bool = True, solution: str | None = None) -> dict:
+        """Add an empty symbol to a CAT: a .NET HMI symbol (technology='hmi', name like 'sBig'), a .NET
+        faceplate (faceplate=true, name like 'fMain') or an eHMI symbol (technology='ehmi', name like
+        'seBig'). Creates the files, the .cfg entry and project registration, and regenerates the CAT's
+        .event.cs/.def.cs. Draw the content in EAE afterwards."""
+        return change(solution, lambda s: cat_edit.add_symbol(s, cat, name, technology, faceplate), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_ehmi_remove_object(canvas: str, name: str, dry_run: bool = True, solution: str | None = None) -> dict:
+        """Remove an object (e.g. a placed symbol, 'symbol1') from an eHMI canvas."""
+        return change(solution, lambda s: ehmi_edit.remove_object(s, canvas, name), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_opcua_expose(path: str, exposed: bool = True, application: str | None = None, dry_run: bool = True,
+                         solution: str | None = None) -> dict:
+        """Expose a variable to OPC UA (or remove the exposure with exposed=false), like ticking it in
+        EAE. path: <application instance>[.<inner FB>...].<variable>, e.g. 'CAT1.IThis.OUT1'. Written
+        to the application layer and to every resource the instance is mapped to."""
+        return change(solution, lambda s: opcua_edit.set_exposed(s, path, exposed, application), dry_run)
 
     @mcp.tool(annotations=CREATE)
     def eae_subapp_create(name: str, application: str = "APP1", instance: str | None = None,

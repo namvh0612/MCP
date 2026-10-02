@@ -279,7 +279,28 @@ def add_fb(sol: Solution, network: str, name: str, type_name: str, namespace: st
     xmlrt.insert_child(c.net_el, el, last[-1] + 1 if last else 0)
     for var, value in (parameters or {}).items():
         _set_param_el(c, sol, el, td, var, value)
+    _sync_subcat(cs, sol, c, name, td)
     return _finish_net(cs, sol, c)
+
+
+def _sync_subcat(cs: ChangeSet, sol: Solution, c: Container, name: str, td: TypeDef | None) -> None:
+    """A CAT instance inside a CAT is listed in the outer CAT's .cfg as <SubCAT> (before <HMIInterface>)."""
+    if c.kind != "type" or c.owner is None:
+        return
+    cat = sol.cats.get(c.owner.qualified_name)
+    if cat is None or not (cs.root / cat.cfg_file).exists():
+        return
+    root = cs.doc(cat.cfg_file).root
+    for old in [e for e in children(root, "SubCAT") if e.get("Name") == name]:
+        xmlrt.remove_child(old)
+    if td is None or td.kind != "cat":
+        return
+    el = w._el("SubCAT", [("Name", name), ("Type", td.name), ("Namespace", td.namespace), ("UsedInCAT", "true")],
+               ns=w._ns(root))
+    kids = children(root)
+    subs = [i for i, e in enumerate(kids) if local(e) == "SubCAT"]
+    hmi = [i for i, e in enumerate(kids) if local(e) == "HMIInterface"]
+    xmlrt.insert_child(root, el, subs[-1] + 1 if subs else (hmi[0] if hmi else 0))
 
 
 def _set_param_el(c: Container, sol: Solution, inst_el, td: TypeDef, var: str, value: str | None) -> None:
@@ -404,6 +425,7 @@ def remove_fb(sol: Solution, network: str, instance: str, force: bool = False) -
                 _remove_connection_el(conn)
                 break
     xmlrt.remove_child(inst)
+    _sync_subcat(cs, sol, c, instance, None)
     return _finish_net(cs, sol, c)
 
 

@@ -82,7 +82,7 @@ interfaces of the system-library types the solution uses. Copy the solution and 
 | `eae_catalog_build` | Index system-library types from the library store |
 | `eae_validate` | Static checks: identifiers, reserved words, WITH, ECC, connections, registration |
 
-### Write tools (M2)
+### Write tools (M2–M4)
 
 All write tools default to **`dry_run=true`** and return a unified diff. Pass `dry_run=false` to write;
 this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRITE=1`).
@@ -101,6 +101,15 @@ this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRI
 | `eae_net_connect`, `eae_net_disconnect` | Event/data/adapter connections, with direction and single-source checks |
 | `eae_net_set_param` | Instance parameters (ST literals), synced to the mapped resource copy |
 | `eae_map_to_resource`, `eae_unmap` | Map application instances to `Device/Resource`, copying shared connections |
+| `eae_cat_create` | New CAT like EAE's "New CAT": `.fbt` with `IThis`, `_HMI.fbt`, `.cfg`, companions, a .NET HMI symbol (+ generated `.event.cs`/`.def.cs`) and an eHMI symbol |
+| `eae_cat_add_symbol` | Add a .NET HMI symbol, a .NET faceplate or an eHMI symbol to a CAT |
+| `eae_opcua_expose` | Expose/unexpose a variable on OPC UA (application layer and mapped resources) |
+| `eae_ehmi_canvas_create` | New eHMI canvas on a device, added to its canvas resolution |
+| `eae_ehmi_place_symbol`, `eae_ehmi_update_object`, `eae_ehmi_remove_object` | Put a CAT instance on an eHMI canvas, move/resize/edit it, remove it |
+
+CAT bookkeeping is automatic: adding a CAT instance inside a CAT lists it as `<SubCAT>` in the `.cfg`,
+and changing the IThis interface (`eae_fb_update_interface` on `<Cat>_HMI`) regenerates `.event.cs`,
+the symbols' `.cnv.xml` mapping and `_HMI.opcua.xml`.
 
 Every write:
 - backs up modified files to `<solution>/.eae-mcp/backup/<timestamp>/`;

@@ -209,8 +209,10 @@ Conventions:
 |---|---|
 | `eae_cat_describe` | The `.cfg` manifest: sub-CATs, HMI interface, symbols/faceplates, OPC UA/offline config, eHMI files |
 | `eae_cat_create` | Minimal CAT: `.fbt` + `.cfg` + `_HMI.fbt` + offline/OPC UA XML + project registration. Optionally creates a default .NET HMI symbol and eHMI symbol. ⚠️ Golden-tested against a CAT created by EAE (checklist C7) |
-| `eae_cat_add_subcat` | Add a sub-CAT (e.g. `HMI_Indication_Real_v1_0`) to the network and to `.cfg` |
-| `eae_cat_set_opcua` | Enable/disable OPC UA exposure per variable (`Enabled`, `AccessLevel`) |
+| `eae_cat_add_symbol` | Add a .NET symbol, .NET faceplate or eHMI symbol (files, `.cfg`, registration, regenerated `.event.cs`/`.def.cs`) |
+| sub-CATs | No separate tool: `eae_net_add_fb` / `eae_net_remove_fb` inside a CAT keep `<SubCAT>` in `.cfg` in step |
+| `eae_opcua_expose` | Expose/unexpose a variable (`Exposed` attribute in the layer and resource `opcua.xml`, golden C8) |
+| IThis changes | `eae_fb_update_interface` on `<Cat>_HMI` regenerates `.event.cs`, `.cnv.xml` and `_HMI.opcua.xml` |
 
 ### 5.8. System (P1 read, P2 write)
 
@@ -241,9 +243,11 @@ The writer uses a **constrained code model**. It parses `InitializeComponent()` 
 | `eae_ehmi_list` | Per-device canvases, CAT symbols, graphics, support classes |
 | `eae_ehmi_describe` | Objects, `tagName` bindings, properties, related TS code |
 | `eae_ehmi_canvas_create` | New canvas for a device (`.cnv.json` + `.cnv.ts` + `.user.cs`), registered in `.htmlproj` and the device's `WebCanvasesResolutionList.xml` |
-| `eae_ehmi_canvas_add_symbol` | Place a CAT symbol on a canvas, with `tagName` = instance ID |
-| `eae_ehmi_symbol_create` | New symbol for a CAT: `.sym.json` + `.sym.ts` + `.sym.xml` + `.user.cs` + `.htmlproj` registration |
-| `eae_ehmi_update_object` | Change object properties (position, color, text, binding) |
+| `eae_ehmi_place_symbol` | Place a CAT symbol on a canvas, with `tagName` = instance ID |
+| `eae_cat_add_symbol` (`technology="ehmi"`) | New symbol for a CAT: `.sym.json` + `.sym.ts` + `.sym.xml` + `.user.cs` + `.htmlproj` registration |
+| `eae_ehmi_update_object`, `eae_ehmi_remove_object` | Change object properties (position, color, text, binding); remove an object |
+
+`.cnv.json`/`.sym.json` are rewritten in the file's own layout (BOM, indent, line ends), which reproduces every sample byte for byte. A device's first eHMI canvas must be made in EAE (it creates the resolution list).
 
 ### 5.11. Static validation (P1)
 
@@ -339,7 +343,7 @@ A fixture-trimming script (`scripts/make_fixture.py`) performs this removal so i
 | **M1** ✅ (2026-10-02) | Server skeleton, config, safety, lossless round-trip, solution index, catalog, resolver, read-only tools (§5.1, read parts of §5.7–5.10), knowledge layer (§4) | Claude can read and explain every component of SolarPlantDemo, including both HMIs |
 | **M2** ✅ (2026-10-02, pending EAE acceptance) | Write Adapter, DataType, Basic FB; `eae_validate` | Created files build in EAE |
 | **M3** ✅ (2026-10-02, pending EAE acceptance) | Networks (Composite/SubApp/Layer) and resource mapping | Same |
-| **M4** | CAT (create, sub-CAT, OPC UA) + eHMI write (symbol, canvas) | A new CAT renders on an eHMI canvas |
+| **M4** ✅ (2026-10-02, pending EAE acceptance) | CAT (create, sub-CAT, OPC UA) + eHMI write (symbol, canvas) | A new CAT renders on an eHMI canvas |
 | **M5** | .NET HMI write (symbol, faceplate, canvas) | A new CAT renders on an HMI canvas |
 | **M6** | OPC UA runtime, Buildtime automation investigation, 26.1 support | — |
 
