@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "eae": {
+      "command": ".venv/Scripts/eae-mcp.exe",
+      "args": ["--config", "eae-mcp.toml"]
+    }
+  }
+}

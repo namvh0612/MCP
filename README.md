@@ -126,5 +126,5 @@ uv venv && uv pip install -e ".[dev]"
 Every XML file in the fixtures (2,249 files) must round-trip byte for byte through `eae_mcp.io.xmlrt`.
 That is the precondition for the M2 write tools.
 
-Docs: `docs/SPECS.md` (specification), `docs/EAE_FILE_FORMATS.md`, `docs/GOLDEN_FINDINGS.md`
+VS Code setup: `docs/SETUP_VSCODE.md`. Docs: `docs/SPECS.md` (specification), `docs/EAE_FILE_FORMATS.md`, `docs/GOLDEN_FINDINGS.md`
 (reverse-engineered formats), `docs/USER_GUIDE_M0.md` (how the golden files were captured).

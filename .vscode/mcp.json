@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "eae": {
+      "type": "stdio",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\eae-mcp.exe",
+      "args": ["--config", "${workspaceFolder}\\eae-mcp.toml"]
+    }
+  }
+}
