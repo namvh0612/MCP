@@ -347,14 +347,17 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
     @mcp.tool(annotations=CREATE)
     def eae_net_add_fb(network: str, name: str, type: str, namespace: str | None = None,
                        parameters: dict[str, str] | None = None, x: float | None = None, y: float | None = None,
-                       dry_run: bool = True, solution: str | None = None) -> dict:
+                       generic_params: str | None = None, dry_run: bool = True,
+                       solution: str | None = None) -> dict:
         """Add an FB/CAT instance to a network. type: solution type or system-library type
         (e.g. E_DELAY; run eae_catalog_build first). parameters: {input var: ST literal},
         e.g. {"DT": "T#1s", "Name": "'Pump1'"}. Position is chosen automatically unless x/y given.
         network: a Composite/CAT/SubApp type name, or an application ('APP1' or 'APP1/Layer').
+        Generic FBs: type='VALFORMAT' with generic_params='I:=1;VALUE${I}:STRING' reuses the concrete
+        type already used in the solution (see eae_generic_fbs).
         """
-        return change(solution, lambda s: network_edit.add_fb(s, network, name, type, namespace, parameters, x, y),
-                      dry_run)
+        return change(solution, lambda s: network_edit.add_fb(s, network, name, type, namespace, parameters, x, y,
+                                                              generic_params), dry_run)
 
     @mcp.tool(annotations=MODIFY)
     def eae_net_remove_fb(network: str, name: str, force: bool = False, dry_run: bool = True,

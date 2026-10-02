@@ -162,7 +162,7 @@ def resolve_end(c: Container, sol: Solution, spec: str) -> End:
     if "." in spec:
         inst_name, pin = spec.split(".", 1)
         inst = _instance(c, inst_name)
-        td = sol.find_type(inst.get("Type", ""), inst.get("Namespace"))
+        td = _find_type(sol, inst.get("Type", ""), inst.get("Namespace"))
         if td is None:
             raise EditError(f"Type {inst.get('Type')} of {inst_name} is unknown (run eae_catalog_build for library types).")
         found = _pin_lookup(td.interface, pin)
@@ -246,8 +246,29 @@ def _translate(ref: str, mapping: dict[str, str]) -> str | None:
 # -- operations ---------------------------------------------------------------------------------------
 
 
+def _find_type(sol: Solution, name: str, namespace: str | None) -> TypeDef | None:
+    from .library_guide import generic_typedef
+
+    return sol.find_type(name, namespace) or generic_typedef(sol, name, namespace)
+
+
+def _generic_by_base(sol: Solution, base: str, params: str | None) -> TypeDef | None:
+    """'VALFORMAT' (+ 'I:=1;VALUE${I}:STRING') → an existing concrete generic type with those parameters."""
+    from .library_guide import find_generic, generic_typedef
+
+    found = find_generic(sol, base, params)
+    if not found:
+        return None
+    variants = {g["params"] for g in found}
+    if len(variants) > 1:
+        raise EditError(f"{base} is used with several parameter sets; pass generic_params, one of: "
+                        + "; ".join(sorted(variants)))
+    return generic_typedef(sol, found[0]["type"], found[0]["namespace"])
+
+
 def add_fb(sol: Solution, network: str, name: str, type_name: str, namespace: str | None = None,
-           parameters: dict[str, str] | None = None, x: float | None = None, y: float | None = None) -> ChangeSet:
+           parameters: dict[str, str] | None = None, x: float | None = None, y: float | None = None,
+           generic_params: str | None = None) -> ChangeSet:
     cs = ChangeSet(sol.root)
     c = resolve_container(cs, sol, network)
     cs.description = f"add {name}: {type_name} to {c.label}"
@@ -256,7 +277,9 @@ def add_fb(sol: Solution, network: str, name: str, type_name: str, namespace: st
     w.check_identifier(name, "instance name")
     if any(e.get("Name") == name for e in _instances(c)):
         raise EditError(f"{c.label} already has an instance '{name}'.")
-    td = sol.find_type(type_name, namespace)
+    td = _find_type(sol, type_name, namespace)
+    if td is None and generic_params is not None or (td is None and type_name.isupper()):
+        td = _generic_by_base(sol, type_name, generic_params)
     if td is None:
         raise EditError(f"Type '{type_name}' not found in the solution or the library catalog "
                         "(run eae_catalog_build for system-library types).")
@@ -270,6 +293,11 @@ def add_fb(sol: Solution, network: str, name: str, type_name: str, namespace: st
         ("x", f"{x if x is not None else (max(xs) + 700 if xs else 1000):g}"),
         ("y", f"{y if y is not None else 1000:g}"),
     ], ns=_ns(c))
+    if td.kind == "generic":
+        # Concrete generic types are generated per project: use the network's own namespace.
+        el.set("Namespace", (c.owner.namespace if c.owner is not None else None) or "Main")
+        w._sub(el, "Attribute", [("Name", "Configuration.GenericFBType.InterfaceParams"),
+                                 ("Value", td.attributes["Configuration.GenericFBType.InterfaceParams"])])
     if c.kind == "type":
         # Type networks write x/y before Namespace (golden cfbTest); layers write Namespace first.
         for attr in ("Namespace",):
@@ -326,7 +354,7 @@ def set_param(sol: Solution, network: str, instance: str, var: str, value: str |
     c = resolve_container(cs, sol, network)
     cs.description = f"set {instance}.{var} in {c.label}"
     inst = _instance(c, instance)
-    td = sol.find_type(inst.get("Type", ""), inst.get("Namespace"))
+    td = _find_type(sol, inst.get("Type", ""), inst.get("Namespace"))
     if td is None:
         raise EditError(f"Type {inst.get('Type')} is unknown.")
     _set_param_el(c, sol, inst, td, var, value)

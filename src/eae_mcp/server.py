@@ -103,6 +103,37 @@ def create_server(config: Config | None = None) -> MCPServer:
         return run(services.find_usages, s, ws, name)
 
     @mcp.tool(annotations=READ_ONLY)
+    def eae_library_guide(library: str | None = None, folder: str | None = None, query: str | None = None,
+                          solution: str | None = None) -> dict:
+        """Compact, ranked map of the libraries in the solution (start here before building something).
+        No arguments: libraries with kind counts, system libraries and generic FB families.
+        library='SE.Agile': its folders with type families (versions collapsed), most used first.
+        library + folder='.Standard.HMI': one line per type with its signature and usage count
+        (`superseded` marks older versions). query='valve': search names/folders across libraries."""
+        from .project.library_guide import library_guide
+        return run(library_guide, sol(solution), library, folder, query)
+
+    @mcp.tool(annotations=READ_ONLY)
+    def eae_generic_fbs(base: str | None = None, solution: str | None = None) -> list[dict]:
+        """Generic FB types used in the solution (VALFORMAT_<hash>, PERSISTENCE_<hash>, …): template,
+        library, parameter string, pins learned from existing connections, and where they are used.
+        Reuse one with eae_net_add_fb type=<template> generic_params=<parameters>."""
+        from .project import library_guide as lg
+        s = sol(solution)
+        out = []
+        for g in (lg.find_generic(s, base) if base else lg.generic_registry(s)):
+            td = lg.generic_typedef(s, g["type"], g["namespace"])
+            out.append({**{k: g[k] for k in ("base", "type", "namespace", "params", "uses", "used_in")},
+                        "pins": lg.signature(td) if td else None})
+        return out
+
+    @mcp.tool(annotations=READ_ONLY)
+    def eae_knowledge(query: str, limit: int = 4) -> list[dict]:
+        """Search the built-in EAE knowledge (concepts, standard library, generic FBs, functions, HMI
+        design standards) and return only the matching sections. Cheaper than reading whole concepts."""
+        return run(services.knowledge_search, query, limit)
+
+    @mcp.tool(annotations=READ_ONLY)
     def eae_search(text: str, limit: int = 50, solution: str | None = None) -> list[dict]:
         """Full-text search over type names, comments, variables and ST algorithm code."""
         return services.search(sol(solution), text, limit)

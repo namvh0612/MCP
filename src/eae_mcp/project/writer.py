@@ -72,7 +72,8 @@ def var_element(v: Var, with_id: bool = True, taken: set[str] | None = None) -> 
     if with_id and not v.id:
         v.id = new_id16(taken)
     return _el("VarDeclaration", [
-        ("ID", v.id if with_id else None), ("Name", v.name), ("Type", v.type), ("ArraySize", v.array_size),
+        ("ID", v.id if with_id else None), ("Name", v.name), ("Type", v.type), ("Namespace", v.namespace),
+        ("ArraySize", v.array_size),
         ("InitialValue", v.initial_value), ("Comment", v.comment),
     ])
 

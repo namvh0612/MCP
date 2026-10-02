@@ -37,6 +37,7 @@ class Var:
     initial_value: str | None = None
     array_size: str | None = None
     comment: str | None = None
+    namespace: str | None = None  # namespace of a user type (e.g. SE.Agile for ConnectionStatus_v1_0)
 
 
 @dataclass
@@ -60,6 +61,7 @@ class Interface:
     adapter_inputs: list[AdapterDecl] = field(default_factory=list)
     adapter_outputs: list[AdapterDecl] = field(default_factory=list)
     return_type: str | None = None  # functions only
+    inout_vars: list[Var] = field(default_factory=list)  # VAR_IN_OUT (functions; passed by reference)
 
     def pins(self) -> list[tuple[str, str, str, str | None]]:
         """(direction, kind, name, id) for every pin."""

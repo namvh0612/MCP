@@ -147,3 +147,26 @@ def test_unknown_library_type_needs_catalog(golden_copy):
     sol = load_solution(golden_copy)  # no library store
     with pytest.raises(EditError, match="eae_catalog_build"):
         ne.add_fb(sol, "APP1", "D", "E_DELAY")
+
+
+def test_generic_fb_reuse_and_wiring(solar_dir, tmp_path):
+    """Generic FBs (VALFORMAT_<hash>) are added by template name + parameters and wired by learned pins."""
+    from eae_mcp.project import library_guide as lg
+
+    root = tmp_path / "solar"
+    shutil.copytree(solar_dir, root)
+    sol = load_solution(root)
+    td = lg.generic_typedef(sol, "VALFORMAT_8708B18B173C5ABA", "Main")
+    assert {e.name for e in td.interface.event_inputs} == {"REQ"} and "VALUE1" in {v.name for v in td.interface.input_vars}
+    assert next(v for v in td.interface.input_vars if v.name == "VALUE1").type == "STRING"
+    with pytest.raises(EditError, match="several parameter sets"):
+        ne.add_fb(sol, "DNSHostQuery", "Fmt", "VALFORMAT")
+    ne.add_fb(sol, "DNSHostQuery", "Fmt", "VALFORMAT", parameters={"FORMAT": "'%s'"},
+              generic_params="I:=1;VALUE${I}:STRING").apply()
+    text = (root / "IEC61499/DNSHostQuery.fbt").read_text()
+    assert ('Name="Fmt" Type="VALFORMAT_8708B18B173C5ABA" x="5400" y="1000" Namespace="Main">' in text
+            and 'Value="Runtime.Standard#I:=1;VALUE${I}:STRING" />' in text and '<Parameter Name="$FORMAT"' in text)
+    cs = ne.connect(load_solution(root), "DNSHostQuery", "REQ", "Fmt.REQ")
+    assert '.REQ" />' in cs.changes["IEC61499/DNSHostQuery.fbt"].new.decode()
+    with pytest.raises(EditError, match="no pin"):
+        ne.connect(load_solution(root), "DNSHostQuery", "REQ", "Fmt.NOPE")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -699,3 +700,22 @@ def doc_scaffold_saved(sol: Solution, ws: Workspace, name: str, save: bool = Tru
         path.write_text(md, encoding="utf-8")
         out["saved_to"] = str(path)
     return out
+
+
+def knowledge_search(query: str, limit: int = 4) -> list[dict]:
+    """Best-matching sections (by '## ' heading) of the concept docs: small answers instead of whole files."""
+    terms = [t for t in re.findall(r"[\w$.-]+", query.lower()) if len(t) > 1]
+    if not terms:
+        raise NotFound("Give a few words to search for, e.g. 'E_PERMIT interlock' or 'alarm colors'.")
+    scored = []
+    for path in sorted(KNOWLEDGE_DIR.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        title = text.splitlines()[0].lstrip("# ").strip() if text else path.stem
+        for section in re.split(r"\n(?=## )", text):
+            low = section.lower()
+            score = sum(low.count(t) for t in terms) + 3 * sum(t in low.split("\n", 1)[0] for t in terms)
+            if score:
+                heading = section.split("\n", 1)[0].lstrip("# ").strip()
+                scored.append((score, path.stem, title, heading, section.strip()))
+    scored.sort(key=lambda s: -s[0])
+    return [{"concept": c, "doc": t, "section": h, "text": body[:4000]} for _, c, t, h, body in scored[:limit]]
