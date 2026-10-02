@@ -84,6 +84,8 @@ def create_server(config: Config | None = None) -> MCPServer:
     @mcp.tool(annotations=READ_ONLY)
     def eae_get(name: str, include_xml: bool = False, solution: str | None = None) -> dict:
         """Full definition of a type (FB, CAT, adapter, datatype, function, subapp, library type).
+        name: a type name, or an application instance name (resolves to its type). To list
+        types of a kind, use eae_list instead.
 
         Networks are returned with connections resolved to names (`FB1.CNF -> FB2.START`).
         """
@@ -113,7 +115,8 @@ def create_server(config: Config | None = None) -> MCPServer:
     @mcp.tool(annotations=READ_ONLY)
     def eae_cat_describe(name: str, solution: str | None = None) -> dict:
         """Everything about a CAT: interface, network, HMI interface (values to/from HMI),
-        sub-CATs, .NET HMI and eHMI symbols with their bindings, and all files."""
+        sub-CATs, .NET HMI and eHMI symbols with their bindings, and all files.
+        name: the CAT type (e.g. 'acPPC_v1_0') or an application instance of it (e.g. 'PPC001')."""
         s = sol(solution)
         return run(services.cat_describe, s, ws, name)
 
@@ -163,12 +166,15 @@ def create_server(config: Config | None = None) -> MCPServer:
         s = sol(solution)
         return run(services.component_files, s, name)
 
-    @mcp.tool(annotations=READ_ONLY)
-    def eae_doc_scaffold(name: str, solution: str | None = None) -> str:
-        """Markdown documentation skeleton for a component, with [SCREENSHOT: …] placeholders
-        for captures taken in EAE."""
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True,
+                                          openWorldHint=False))
+    def eae_doc_scaffold(name: str, save: bool = True, solution: str | None = None) -> dict:
+        """Markdown documentation skeleton for a component, with [SCREENSHOT: …] placeholders for
+        captures taken in EAE. With save=true (default) it is also written to
+        <solution>/.eae-mcp/docs/<Type>.md (never into the EAE project). Show the user the
+        `markdown` field verbatim and tell them the `saved_to` path."""
         s = sol(solution)
-        return run(services.doc_scaffold, s, ws, name)
+        return run(services.doc_scaffold_saved, s, ws, name, save)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True,
                                           openWorldHint=False))

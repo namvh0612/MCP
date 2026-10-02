@@ -109,13 +109,33 @@ def solution_summary(sol: Solution) -> dict:
 # -- types -------------------------------------------------------------------------
 
 
+KIND_WORDS = {"adapter", "adapters", "datatype", "datatypes", "basic", "composite", "cat", "cats", "subapp",
+              "function", "functions", "sifb", "fb", "fbs", "type", "types"}
+
+
 def find_type(sol: Solution, name: str) -> TypeDef:
+    """Find a type by name or qualified name; an application instance name resolves to its type."""
+    name = name.strip()
     ns, _, short = name.rpartition(".") if "." in name and name not in sol.types else ("", "", name)
     td = sol.types.get(name) or sol.find_type(short or name, ns or None)
-    if td is None:
-        candidates = [t.qualified_name for t in sol.types.values() if name.lower() in t.name.lower()][:10]
-        raise NotFound(f"Type '{name}' not found." + (f" Did you mean: {', '.join(candidates)}?" if candidates else ""))
-    return td
+    if td is not None:
+        return td
+    hit = find_instance(sol, name)
+    if hit is not None:
+        inst = hit[3]
+        td = sol.find_type(inst.type, inst.namespace)
+        if td is not None:
+            return td
+    if name.lower() in KIND_WORDS:
+        raise NotFound(f"'{name}' is a kind of component, not a name. Use eae_list with kind='{name.rstrip('s').lower()}' "
+                       "to list them, then pass one of the names.")
+    import difflib
+
+    names = {t.name: t.qualified_name for t in sol.types.values()}
+    close = difflib.get_close_matches(name, list(names), n=6, cutoff=0.6)
+    close += [n for n in names if name.lower() in n.lower() and n not in close][: 6 - len(close)]
+    raise NotFound(f"Type '{name}' not found." + (f" Did you mean: {', '.join(names[n] for n in close)}?" if close else
+                                                   " Use eae_list or eae_search to find names."))
 
 
 def network_view(net: Network | None, sol: Solution, owner: TypeDef | None = None) -> dict | None:
@@ -651,3 +671,16 @@ def validate(sol: Solution, name: str | None = None) -> dict:
         return validate_solution(sol, name)
     except LookupError as e:
         raise NotFound(str(e)) from e
+
+
+def doc_scaffold_saved(sol: Solution, ws: Workspace, name: str, save: bool = True) -> dict:
+    """Scaffold plus (optionally) a copy under <solution>/.eae-mcp/docs/<Type>.md (not a project file)."""
+    md = doc_scaffold(sol, ws, name)
+    out = {"markdown": md}
+    if save:
+        td = find_type(sol, name)
+        path = sol.root / ".eae-mcp" / "docs" / f"{td.name}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(md, encoding="utf-8")
+        out["saved_to"] = str(path)
+    return out

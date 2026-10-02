@@ -128,3 +128,21 @@ def test_sensitive_paths():
     assert safety.is_sensitive("General/se-rbac-users.json")
     assert safety.is_sensitive("Topology/Content/89a8_DeviceCertificate")
     assert not safety.is_sensitive("IEC61499/fbTest.fbt")
+
+
+def test_type_tools_accept_instance_names_and_explain_kind_words(ws_golden, tmp_path):
+    ws, sol = ws_golden
+    assert services.cat_describe(sol, ws, "CAT1")["name"] == "Main.catTest"
+    with pytest.raises(services.NotFound, match="eae_list"):
+        services.find_type(sol, "cat")
+
+
+def test_doc_scaffold_is_saved_outside_the_project(golden_dir, tmp_path):
+    import shutil
+    dest = tmp_path / "g"
+    shutil.copytree(golden_dir, dest)
+    ws = services.Workspace(Config(roots=[]))
+    sol = ws.open(str(dest))
+    out = services.doc_scaffold_saved(sol, ws, "fbTest")
+    assert out["saved_to"].endswith(".eae-mcp/docs/fbTest.md".replace("/", __import__("os").sep))
+    assert out["markdown"].startswith("# fbTest")
