@@ -32,8 +32,10 @@ class VarSpec(BaseModel):
 
 
 class HmiElementSpec(BaseModel):
-    kind: Literal["value", "state", "alarm", "text"]
-    var: str = Field(description="Input variable of the CAT's HMI interface (IThis)")
+    kind: Literal["value", "state", "alarm", "text", "setpoint", "command"]
+    var: str = Field(description="value/state/alarm/text: IThis input or Agile HMI_Indication/Control block path; "
+                                 "setpoint: IThis output variable or HMI_Control_Real/Integer path; "
+                                 "command: IThis output event or HMI_Control_Bool/Integer path")
     label: str | None = None
     unit: str | None = None
     range: list[float] | None = Field(None, description="[low, high] span of the analog indicator")
@@ -42,13 +44,17 @@ class HmiElementSpec(BaseModel):
     priority: int = Field(2, description="Alarm priority 1 (critical) .. 4 (low) used for abnormal display")
     states: dict[str, str] | None = Field(None, description="value -> text, BOOL uses 'true'/'false'")
     abnormal: list[str] | None = Field(None, description="state values shown as abnormal")
+    step: float | None = Field(None, description="setpoint on an Agile block: -/+ step in engineering units")
+    value: str | None = Field(None, description="command: value sent (true/false/toggle, integer, number)")
+    confirm: bool = Field(False, description="command/setpoint: ask the operator to confirm (critical actions)")
 
     def to_model(self) -> "sa_builder.ElementSpec":
         return sa_builder.ElementSpec(self.kind, self.var, self.label, self.unit,
                                       tuple(self.range) if self.range else None,
                                       tuple(self.normal) if self.normal else None,
                                       tuple(self.limits) if self.limits else None, self.priority,
-                                      dict(self.states or {}), list(self.abnormal or []))
+                                      dict(self.states or {}), list(self.abnormal or []), self.step, self.value,
+                                      self.confirm)
 
 
 class HmiSectionSpec(BaseModel):
@@ -435,7 +441,10 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         Each element's var is either an IThis input of the CAT (basic style; add it first with
         eae_fb_update_interface on <Cat>_HMI) or the path of an SE.Agile HMI_Indication_* block (Agile style,
         e.g. 'Equipment.IX'): the block's invisible bridge (sValChanged / seValChanged) is embedded and the
-        value drawn from it; on .NET units, decimals and span come from the block when not given. The result is generated code (Designer + C# / JSON + TypeScript) that must pass
+        value drawn from it; on .NET units, decimals and span come from the block when not given.
+        Operator actions (.NET only): setpoint (IThis output variable → entry box; Agile HMI_Control_Real/Integer →
+        value with −/+ step buttons) and command (IThis output event → button firing it with `value`; Agile
+        HMI_Control_Bool/Integer → button writing true/false/toggle or an integer); confirm=true for critical actions. The result is generated code (Designer + C# / JSON + TypeScript) that must pass
         eae_hmi_review; existing symbols are only replaced with overwrite=true."""
         design = sa_builder.SymbolDesign(title, [e.to_model() for e in elements], width)
         return change(solution, lambda s: sa_tools.build_symbol(s, cat, design, technology, symbol, web_symbol,

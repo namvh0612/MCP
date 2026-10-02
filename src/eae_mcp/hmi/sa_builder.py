@@ -8,7 +8,13 @@ CAT sends to the HMI):
 - state : label + state text from a value→text table; abnormal states get the priority color at runtime;
 - alarm : indicator in the title row: hidden when inactive, shape + color + number of the priority when active
           (BOOL active flag, or INT priority code 0..4);
-- text  : label + live string.
+- text  : label + live string;
+- setpoint : operator entry of a number — basic: a TextBox on an IThis *output* variable (EAE writes it and fires
+          the output event that carries it); Agile: the current value of an HMI_Control_Real/Integer block with
+          −/+ step buttons that send `bridge.FireEvent_CNF(value)` (as SolarPlantDemo acSimLogic does);
+- command  : a button — basic: fires an IThis output event (`FireEvent_<EVENT>(value)`); Agile: writes `value`
+          (true/false/toggle or an integer) to an HMI_Control_Bool/Integer block; optional confirmation dialog.
+          Commands are generated for .NET HMI only (no verified eHMI write API in the samples).
 
 Widgets and code follow what EAE itself writes (learned from SolarPlantDemo/golden): static graphics are
 gray, colors are only set at runtime by generated code, so the result passes eae_hmi_review.
@@ -28,6 +34,7 @@ from . import sa_style as st
 NL = "\r\n"
 T3 = "\t\t\t"
 
+COMMAND_KINDS = ("setpoint", "command")
 DOTNET_T = {"REAL": ("float", "0F"), "LREAL": ("double", "0D"), "INT": ("short", "((short)(0))"),
             "DINT": ("int", "0"), "UINT": ("ushort", "((ushort)(0))"), "USINT": ("byte", "((byte)(0))"),
             "BYTE": ("byte", "((byte)(0))"), "SINT": ("sbyte", "((sbyte)(0))"), "BOOL": ("bool", "false"),
@@ -51,6 +58,9 @@ class ElementSpec:
     priority: int = 2
     states: dict[str, str] = field(default_factory=dict)  # value → text ("true"/"false" for BOOL)
     abnormal: list[str] = field(default_factory=list)  # state values shown as abnormal
+    step: float | None = None  # setpoint (Agile): −/+ step
+    value: str | None = None  # command: value sent (true/false/toggle, integer, number)
+    confirm: bool = False  # command/setpoint: ask the operator before sending
 
 
 @dataclass
@@ -90,9 +100,23 @@ def check_design(d: SymbolDesign, hmi: Interface, technology: str, bridges: dict
             raise DesignError(f"{var}: block {b.block} has no eHMI bridge symbol (seVal…); use technology='hmi'.")
     carried = {w for e in hmi.event_inputs if e.name != "INIT" for w in e.with_vars} | set(bridges)
     seen = set()
+    if any(e.kind in COMMAND_KINDS for e in d.elements) and technology in ("ehmi", "both"):
+        warnings.append("info: setpoints/commands are drawn on the .NET symbol only (no verified eHMI write API); "
+                        "the eHMI symbol shows Agile setpoint values read-only.")
+    controlled = {e.var for e in d.elements if e.kind in COMMAND_KINDS}
     for e in d.elements:
-        if e.kind not in ("value", "state", "alarm", "text"):
-            raise DesignError(f"{e.var}: kind must be value, state, alarm or text.")
+        if e.kind not in ("value", "state", "alarm", "text") + COMMAND_KINDS:
+            raise DesignError(f"{e.var}: kind must be value, state, alarm, text, setpoint or command.")
+        if e.kind in COMMAND_KINDS:
+            _check_command(e, hmi, bridges, warnings)
+            key = (e.kind, e.var, e.value)
+            if key in seen:
+                raise DesignError(f"{e.var} is used twice as {e.kind}" + (f" with value {e.value}" if e.value else "") + ".")
+            seen.add(key)
+            continue
+        if e.var in controlled and e.kind in ("value", "text"):
+            raise DesignError(f"{e.var}: a setpoint/command block already shows its value; use a state element "
+                              "for its feedback text instead.")
         if e.var not in types:
             raise DesignError(f"'{e.var}' is not an input of the HMI interface (vars: {', '.join(types) or 'none'}). "
                               "Add it with eae_fb_update_interface on <Cat>_HMI first.")
@@ -137,6 +161,54 @@ def check_design(d: SymbolDesign, hmi: Interface, technology: str, bridges: dict
         if any(c in (e.label or "") + (e.unit or "") + "".join(e.states.values()) for c in '"\\\r\n'):
             raise DesignError(f"{e.var}: texts must not contain quotes, backslashes or line breaks.")
     return warnings
+
+
+def _check_command(e: ElementSpec, hmi: Interface, bridges: dict, warnings: list[str]) -> None:
+    if any(c in (e.label or "") for c in '"\\\r\n'):
+        raise DesignError(f"{e.var}: texts must not contain quotes, backslashes or line breaks.")
+    br = bridges.get(e.var)
+    if br is not None:
+        if not br.control:
+            raise DesignError(f"{e.var}: {e.kind} needs an HMI_Control_* block, {br.block} is an indication.")
+        if e.kind == "setpoint":
+            if br.val_type not in ("float", "short"):
+                raise DesignError(f"{e.var}: a setpoint needs HMI_Control_Real or HMI_Control_Integer.")
+            if not e.step or e.step <= 0:
+                raise DesignError(f"{e.var}: give the −/+ step of the setpoint (step > 0, in engineering units).")
+        else:
+            if br.val_type == "bool":
+                if (e.value or "").lower() not in ("true", "false", "toggle"):
+                    raise DesignError(f"{e.var}: command value must be true, false or toggle.")
+            elif br.val_type == "short":
+                if not re.fullmatch(r"-?\d+", e.value or ""):
+                    raise DesignError(f"{e.var}: command value must be an integer (e.g. a mode number).")
+            else:
+                raise DesignError(f"{e.var}: commands write HMI_Control_Bool/Integer blocks; use a setpoint for Real.")
+        return
+    outs = {v.name: v.type for v in hmi.output_vars if v.name not in ("QO", "STATUS")}
+    events = {ev.name: ev for ev in hmi.event_outputs if ev.name != "INITO"}
+    if e.kind == "setpoint":
+        if e.var not in outs:
+            raise DesignError(f"'{e.var}' is not an output variable of the HMI interface (outputs: "
+                              f"{', '.join(outs) or 'none'}). Add it, carried by an output event, with "
+                              "eae_fb_update_interface on <Cat>_HMI.")
+        if _base(outs[e.var]) not in DOTNET_T or _base(outs[e.var]) in ("BOOL", "STRING"):
+            raise DesignError(f"{e.var}: a setpoint needs a number, not {outs[e.var]}.")
+        if not any(e.var in ev.with_vars for ev in events.values()):
+            warnings.append(f"warning: {e.var} is not carried by any HMI output event (WITH); the CAT never receives it.")
+        return
+    if e.var not in events:
+        raise DesignError(f"'{e.var}' is not an output event of the HMI interface (events: "
+                          f"{', '.join(events) or 'none'}). A basic command fires an IThis output event.")
+    ev = events[e.var]
+    if len(ev.with_vars) > 1:
+        raise DesignError(f"{e.var}: a command button sends one value; event {e.var} carries {ev.with_vars}.")
+    if ev.with_vars:
+        t = _base(outs.get(ev.with_vars[0], ""))
+        ok = ((t == "BOOL" and (e.value or "").lower() in ("true", "false")) or
+              (t in DOTNET_T and t not in ("BOOL", "STRING") and re.fullmatch(r"-?\d+(\.\d+)?", e.value or "")))
+        if not ok:
+            raise DesignError(f"{e.var}: give the value sent with {ev.with_vars[0]} ({t or '?'}).")
 
 
 # -- layout ------------------------------------------------------------------------------------
@@ -222,6 +294,24 @@ def layout(d: SymbolDesign, bridges: dict | None = None) -> tuple[list[Box], int
             if e.var in bridges:
                 exec_box(e)
             y += 26
+        elif e.kind == "setpoint":
+            text = f"{label} ({e.unit})" if e.unit else label
+            if e.var in bridges:
+                boxes.append(Box(f"lbl{n}", "label", pad, y + 3, W - 2 * pad - 130, 18, text, element=e))
+                boxes.append(Box(f"val{n}", "value", W - pad - 130, y, 76, 22, var=e.var, element=e))
+                boxes.append(Box(f"dn{n}", "stepdn", W - pad - 50, y, 24, 22, "−", var=e.var, element=e))
+                boxes.append(Box(f"up{n}", "stepup", W - pad - 24, y, 24, 22, "+", var=e.var, element=e))
+                exec_box(e)
+            else:
+                boxes.append(Box(f"lbl{n}", "label", pad, y + 3, W - 2 * pad - 90, 18, text, element=e))
+                boxes.append(Box(f"sp{n}", "entry", W - pad - 90, y, 90, 22, var=e.var, element=e))
+            y += 26
+        elif e.kind == "command":
+            i = d.elements.index(e)
+            boxes.append(Box(f"cmd{n}{i}", "button", pad, y, W - 2 * pad, 24, label, var=e.var, element=e))
+            if e.var in bridges:
+                exec_box(e)
+            y += 28
     H = int(y + 6)
     boxes[0].h = H
     return boxes, W, H
@@ -357,6 +447,27 @@ def _dotnet_sections(boxes: list[Box], types: dict[str, str],
                      ("TextAlignment", "NxtControl.Drawing.ContentAlignment.MiddleLeft"),
                      ("TextAutoSizeHorizontalOffset", "10"), ("TextColor", _c(st.TEXT)),
                      ("TextPadding", "new NxtControl.Drawing.Padding(2)")]
+        elif b.kind == "entry":
+            # Operator entry on an IThis output variable (as SE.Agile sValueInput: TextBox bound to oValue).
+            ct, zero = DOTNET_T[_base(types[b.var])]
+            typ = f"System.HMI.Symbols.Base.TextBox<{ct}>"
+            begin = True
+            props = [("Brush", _brush(st.ENTRY)), ("DesignMatrix", ds.matrix(b.x, b.y, b.w / 250, b.h / 27)),
+                     ("IsOnlyInput", "false"), ("IsPrefixSuffixOutside", "false"), ("Name", f'"{n}"'),
+                     ("NumberBase", "NxtControl.GuiFramework.NumberBase.Decimal"), ("Pen", _pen(st.BORDER)),
+                     ("TagName", ds.string(b.var)),
+                     ("TextAlignment", "NxtControl.Drawing.ContentAlignment.MiddleRight"), ("Value", zero)]
+        elif b.kind in ("button", "stepdn", "stepup"):
+            # Theme-styled button as EAE draws it (SE.Agile SmartManager sDefault).
+            typ = "NxtControl.GuiFramework.DrawnButton"
+            props = [("Bounds", _rect(b)), ("Brush", 'new NxtControl.Drawing.Brush("ButtonBrush")'),
+                     ("Click", f"new System.EventHandler(this.{n}Click)"),
+                     ("Font", 'new NxtControl.Drawing.Font("ButtonFont")'),
+                     ("InnerBorderColor", 'new NxtControl.Drawing.Color("ButtonInnerBorderColor")'),
+                     ("Name", f'"{n}"'), ("Pen", 'new NxtControl.Drawing.Pen("ButtonPen")'), ("Radius", "4D"),
+                     ("Text", ds.string(b.text)), ("TextColor", 'new NxtControl.Drawing.Color("ButtonTextColor")'),
+                     ("TextColorMouseDown", 'new NxtControl.Drawing.Color("ButtonTextColorMouseDown")'),
+                     ("Use3DEffect", "false")]
         elif b.kind == "exec":
             ct, zero = DOTNET_T[_base(types[b.var])]
             typ = f"System.HMI.Symbols.Base.Execute<{ct}>"
@@ -372,7 +483,7 @@ def _dotnet_sections(boxes: list[Box], types: dict[str, str],
             raise DesignError(b.kind)
         prelude.append(f"{T3}this.{n} = new {typ}();")
         lines = [f"{T3}this.{n}.BeginInit();"] if begin else []
-        entries = [(p, [f"{T3}this.{n}.{p} {'+=' if p == 'ValueChanged' else '='} {v};"]) for p, v in props]
+        entries = [(p, [f"{T3}this.{n}.{p} {'+=' if p in ('ValueChanged', 'Click') else '='} {v};"]) for p, v in props]
         if extra:
             entries.append(("Points", extra))  # multi-line statement, kept at its alphabetical place
         for _, ls in sorted(entries, key=lambda e: e[0].lower()):
@@ -424,7 +535,7 @@ def _cs_element(e: ElementSpec, boxes: list[Box], types: dict[str, str], br, acc
     p = st.priority(e.priority)
     is_bool = _base(types[e.var]) == "BOOL"
     m: list[str] = []
-    if e.kind == "value":
+    if e.kind in ("value", "setpoint"):
         m += ["\t\t\t{", "\t\t\t\tdouble v;",
               "\t\t\t\ttry { v = Convert.ToDouble(raw); } catch (Exception) { return; }"]
         if br is not None:
@@ -478,15 +589,68 @@ def _cs_element(e: ElementSpec, boxes: list[Box], types: dict[str, str], br, acc
 def _elements_by_var(boxes: list[Box]) -> dict[str, list[ElementSpec]]:
     out: dict[str, list[ElementSpec]] = {}
     for b in boxes:
-        if b.element is not None and b.kind in ("value", "state", "alarm", "text"):
+        if b.element is not None and b.kind in ("value", "state", "alarm", "text") and b.var is not None:
             lst = out.setdefault(b.var, [])
             if b.element not in lst:
                 lst.append(b.element)
     return out
 
 
+def _confirm(e: ElementSpec, what: str) -> list[str]:
+    if not e.confirm:
+        return []
+    text = f"{what}?".replace('"', "")
+    return [f'\t\t\tif (System.Windows.Forms.MessageBox.Show("{text}", "Confirm", '
+            "System.Windows.Forms.MessageBoxButtons.YesNo, System.Windows.Forms.MessageBoxIcon.Question) != "
+            "System.Windows.Forms.DialogResult.Yes)", "\t\t\t\treturn;"]
+
+
+def _cs_literal(value: str, net: str) -> str:
+    if net == "bool":
+        return value.lower()
+    if net == "float":
+        return f"{float(value)!r}F"
+    if net == "double":
+        return f"{float(value)!r}"
+    return f"(({net})({int(float(value))}))"
+
+
+def _cs_commands(boxes: list[Box], types: dict[str, str], bridges: dict, outputs: dict[str, list]) -> list[str]:
+    """Click handlers: basic → FireEvent_<EVENT>(value) of the symbol; Agile → bridge.FireEvent_CNF(value)."""
+    m: list[str] = []
+    for b in boxes:
+        if b.kind not in ("button", "stepdn", "stepup"):
+            continue
+        e, br, n = b.element, bridges.get(b.var), _id(b.var)
+        label = e.label or e.var
+        m += ["", f"\t\tvoid {b.name}Click(object sender, EventArgs e)", "\t\t{"]
+        if b.kind in ("stepdn", "stepup"):
+            sign = "-" if b.kind == "stepdn" else "+"
+            m += _confirm(e, f"Change {label}")
+            m += [f"\t\t\tdouble v = Convert.ToDouble(x{n}.Val) {sign} {e.step!r};",
+                  f"\t\t\tdouble lo = x{n}.ValMinimum, hi = x{n}.ValMaximum;",
+                  "\t\t\tif (hi > lo) { if (v < lo) v = lo; if (v > hi) v = hi; }",
+                  f"\t\t\tx{n}.FireEvent_CNF({'(float)v' if br.val_type == 'float' else '(short)Math.Round(v)'});"]
+        elif br is not None:
+            m += _confirm(e, label)
+            if br.val_type == "bool" and e.value.lower() == "toggle":
+                m += [f"\t\t\tx{n}.FireEvent_CNF(!x{n}.Val);"]
+            else:
+                m += [f"\t\t\tx{n}.FireEvent_CNF({_cs_literal(e.value, br.val_type)});"]
+        else:
+            m += _confirm(e, label)
+            args = outputs.get(e.var, [])
+            if args:
+                net = DOTNET_T[_base(args[0][1])][0]
+                m += [f"\t\t\tFireEvent_{e.var}({_cs_literal(e.value, net)});"]
+            else:
+                m += [f"\t\t\tFireEvent_{e.var}();"]
+        m.append("\t\t}")
+    return m
+
+
 def dotnet_code_behind(header: str, ns: str, sym: str, boxes: list[Box], types: dict[str, str],
-                       bridges: dict | None = None) -> str:
+                       bridges: dict | None = None, hmi_outputs: dict[str, list] | None = None) -> str:
     """C# handlers: values/pointers, abnormal states and alarm indicators; Agile bridges via OnValChanged."""
     bridges = bridges or {}
     by_var = _elements_by_var(boxes)
@@ -505,6 +669,7 @@ def dotnet_code_behind(header: str, ns: str, sym: str, boxes: list[Box], types: 
         for e in by_var.get(b.var, []):
             m += _cs_element(e, boxes, types, br, b.name)
         m.append("\t\t}")
+    m += _cs_commands(boxes, types, bridges, hmi_outputs or {})
     return (header + NL.join(["", "using System;", "using NxtControl.GuiFramework;", "", f"namespace {ns}", "{",
                               "\t/// <summary>", f"\t/// {sym}: situation-awareness symbol generated by eae-mcp.",
                               "\t/// </summary>", f"\tpublic partial class {sym} : NxtControl.GuiFramework.HMISymbol", "\t{",
@@ -537,6 +702,9 @@ def ehmi_objects(boxes: list[Box], types: dict[str, str], bridges: dict | None =
         n = b.name
         if b.shape == "dynamic":
             continue  # the eHMI bridges carry no Minimum/Maximum: no dynamic indicator on the web
+        if b.kind in ("entry", "button", "stepdn", "stepup") or (b.element is not None and b.element.kind in COMMAND_KINDS
+                                                                and b.var not in bridges):
+            continue  # commands: .NET only
         if b.kind in ("card", "track", "band", "pointer", "alarm"):
             color = {"card": st.PANEL, "track": st.TRACK, "band": st.NORMAL_BAND, "pointer": st.POINTER,
                      "alarm": st.INDICATOR_IDLE}[b.kind]
@@ -599,7 +767,7 @@ def _ts_element(e: ElementSpec, boxes: list[Box], types: dict[str, str], bridged
     n = _id(e.var)
     p = st.priority(e.priority)
     m: list[str] = []
-    if e.kind == "value":
+    if e.kind in ("value", "setpoint"):
         m += ["      {", "        const v = Number(raw);", "        if (!isNaN(v)) {"]
         if bridged:
             m += [f"          this.put(this.find('val{n}'), 'text', String(Math.round(v * 100) / 100));"]
@@ -731,8 +899,23 @@ def suggest(hmi: Interface, title: str) -> dict:
             elements.append({"kind": "value", "var": v.name, "unit": None, "range": None, "normal": None,
                              "limits": None})
             questions.append(f"{v.name}: unit, span [low, high], normal range, low/high alarm limits")
-    order = {"alarm": 0, "value": 1, "state": 2, "text": 3}
+    outs = {v.name: v.type for v in hmi.output_vars if v.name not in ("QO", "STATUS")}
+    for ev in hmi.event_outputs:
+        if ev.name == "INITO":
+            continue
+        numeric = [w for w in ev.with_vars if _base(outs.get(w, "")) in DOTNET_T
+                   and _base(outs[w]) not in ("BOOL", "STRING")]
+        if len(ev.with_vars) == 1 and numeric:
+            elements.append({"kind": "setpoint", "var": numeric[0], "unit": None})
+            questions.append(f"{numeric[0]}: unit of the setpoint")
+        elif len(ev.with_vars) <= 1:
+            elements.append({"kind": "command", "var": ev.name, "label": ev.name,
+                             **({"value": "true"} if ev.with_vars else {}), "confirm": False})
+            questions.append(f"{ev.name}: button text" + (f", value sent with {ev.with_vars[0]}" if ev.with_vars else "")
+                             + ", and whether the operator must confirm it (critical actions)")
+    order = {"alarm": 0, "value": 1, "state": 2, "text": 3, "setpoint": 4, "command": 5}
     elements.sort(key=lambda e: order[e["kind"]])
     return {"title": title, "elements": elements, "missing": questions,
             "note": "Fill units/ranges/limits/state texts from the description or ask the engineer; "
-                    "do not guess limits. Then call eae_hmi_symbol_build."}
+                    "do not guess limits. Setpoints and commands are drawn on the .NET symbol only. "
+                    "Then call eae_hmi_symbol_build."}

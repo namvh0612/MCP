@@ -81,7 +81,8 @@ def test_agile_suggest_walks_nested_blocks(solar_dir):
     kinds = {e["var"]: e["kind"] for e in draft["elements"]}
     assert kinds["Equipment.IX"] == "value" and kinds["Equipment.ISIM"] == "state"
     assert kinds["Equipment.TOT.I"] == "value"  # two levels of nesting
-    assert any(d["type"].startswith("HMI_Control_") for d in draft["not_drawn"])
+    assert kinds["Equipment.CPHH"] == "setpoint"  # HMI_Control_Real → operator setpoint
+    assert {"path": "Equipment.Mode", "type": "ModeSelector_v1_0"} in draft["not_drawn"]
     sa_tools.build_symbol(sol, "acFlowTransmitter_v1_0",
                           sb.SymbolDesign("FT-101", [sb.ElementSpec("value", "Equipment.TOT.I", range=(0, 100))]),
                           technology="hmi")

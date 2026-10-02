@@ -3,7 +3,9 @@
 using System;
 using System.Collections.Generic;
 namespace System.Drawing { public enum FontStyle { Regular, Bold } public struct Size { public Size(int w, int h) {} } }
-namespace System.Windows.Forms { public enum BorderStyle { None } }
+namespace System.Windows.Forms { public enum BorderStyle { None }
+  public enum MessageBoxButtons { YesNo } public enum MessageBoxIcon { Question } public enum DialogResult { Yes, No }
+  public static class MessageBox { public static DialogResult Show(string t, string c, MessageBoxButtons b, MessageBoxIcon i) { return DialogResult.Yes; } } }
 namespace NxtControl.Drawing {
   public class Color { public Color(byte r, byte g, byte b) {} public Color(string n) {} }
   public class Brush { public Brush(Color c) {} public Brush(string n) {} }
@@ -34,6 +36,9 @@ namespace NxtControl.GuiFramework {
     public bool FontScale { get; set; } public string Text { get; set; } public NxtControl.Drawing.ContentAlignment TextAlignment { get; set; }
     public int TextAutoSizeHorizontalOffset { get; set; } public NxtControl.Drawing.Color TextColor { get; set; }
     public NxtControl.Drawing.Padding TextPadding { get; set; } }
+  public class DrawnButton : Shape { public NxtControl.Drawing.Color InnerBorderColor { get; set; } public double Radius { get; set; }
+    public string Text { get; set; } public NxtControl.Drawing.Color TextColor { get; set; }
+    public NxtControl.Drawing.Color TextColorMouseDown { get; set; } public bool Use3DEffect { get; set; } public event EventHandler Click; }
   public class HMISymbol { public ShapeList Shapes = new ShapeList(); public System.Drawing.Size SymbolSize { get; set; } }
 }
 namespace System.HMI.Symbols.Base {

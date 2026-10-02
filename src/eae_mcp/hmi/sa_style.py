@@ -14,6 +14,7 @@ RGB = tuple[int, int, int]
 CANVAS = (230, 230, 230)  # EAE CanvasBackColor of the DefaultLight theme
 PANEL = (214, 214, 214)  # symbol card
 BORDER = (150, 150, 150)
+ENTRY = (255, 255, 255)  # operator entry fields (editable)
 TEXT = (32, 32, 32)  # titles and values
 TEXT_2 = (80, 80, 80)  # labels, units
 TRACK = (242, 242, 242)  # analog indicator span

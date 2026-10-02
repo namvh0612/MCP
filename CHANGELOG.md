@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **HMI commands:** SA symbols can carry operator actions (.NET HMI): `setpoint` (entry on an IThis output
+  variable, or −/+ steps on an Agile HMI_Control_Real/Integer block) and `command` buttons (fire an IThis output
+  event, or write true/false/toggle/an integer to an Agile control block), with optional confirmation.
+  `eae_hmi_design_suggest` drafts them from output events and control blocks.
+
 - **Agile CATs:** `eae_agile_cat_create` builds an SE.Agile-style CAT (IThis = AssetName, logic Basic FB with
   one plug/socket per signal, HMI_Indication/HMI_Control blocks with Min/Max/Units, GetAssetName →
   InitComponent → EVENTCHAIN skeleton, HMI_INIT chain), `eae_agile_signal_add` extends an existing one. Basic

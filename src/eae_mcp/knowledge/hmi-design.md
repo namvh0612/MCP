@@ -85,6 +85,8 @@ eae-mcp draws symbols and displays itself; the assistant only turns the descript
 | a discrete condition (running, open, mode, state code) | `state` | text per value (`'true'/'false'` for BOOL), which values are `abnormal`, priority |
 | an alarm flag or alarm priority code | `alarm` | priority (BOOL) or a 0..4 code variable |
 | a name, tag or message | `text` | — |
+| an operator setpoint (flow SP, temperature SP) | `setpoint` | basic: an IThis **output** variable carried by an output event; Agile: an `HMI_Control_Real/Integer` path and its `step` |
+| an operator command (start, stop, reset, mode) | `command` | basic: an IThis **output event** (+ `value` for its one WITH variable); Agile: an `HMI_Control_Bool/Integer` path and `value` (`true`/`false`/`toggle`/integer); `confirm` for critical actions |
 
 Rules applied by the generators (do not override them in the design):
 - static drawing is gray; values, pointers and states are dark gray/black; color is set at runtime only when a
@@ -109,8 +111,17 @@ Example element list for "Feed pump P-101: flow 0–120 m³/h, normal 40–90, l
  {"kind": "state", "var": "Running", "label": "Run", "states": {"true": "On", "false": "Off"}}]
 ```
 
-Not generated yet (do in EAE, then re-run `eae_hmi_review`): embedded trends (TrendControl pens), faceplates
-(level 4) and commands (buttons that write to the CAT).
+Commands (setpoints and buttons) follow what EAE/SE.Agile do: a basic setpoint is a `TextBox<T>` bound to the
+output variable (EAE writes it and fires its output event, as SE.Agile `sValueInput` does with `oValue`); a basic
+button calls the symbol's generated `FireEvent_<EVENT>(value)`; an Agile control is written through its bridge,
+`bridge.FireEvent_CNF(value)` (SolarPlantDemo `acSimLogic sControl`), with −/+ steps clamped to the block's
+Minimum/Maximum. Buttons use the theme tokens (`ButtonBrush`, `ButtonFont`, …) of EAE's `DrawnButton`; `confirm`
+asks before sending (ISA-101: confirm actions with significant consequences). Commands are generated for the .NET
+HMI only — the samples show no verified eHMI write API (even SE.Agile's `seValControl` probes several); draw eHMI
+commands in EAE.
+
+Not generated yet (do in EAE, then re-run `eae_hmi_review`): embedded trends (TrendControl pens) and faceplates
+(level 4).
 
 ## Two HMI styles in EAE: basic and Agile
 
@@ -139,9 +150,10 @@ block itself), `mixed`, `none` (no bindings).
   SA graphics are drawn from its value (`OnValChanged` + `Val` / `setValueChangedHandler`). On .NET, units,
   decimals and — when no `range` is given — the span come from the block at runtime (`ValUnits`,
   `ValDecimalPlaces`, `ValMinimum`/`ValMaximum`); eHMI needs `unit` and `range` in the design.
-  `HMI_Indication_String` has no eHMI bridge (use technology `hmi`). Commands (`HMI_Control_*`, `ModeSelector`)
-  are not drawn yet.
+  `HMI_Indication_String` has no eHMI bridge (use technology `hmi`). `HMI_Control_*` blocks become setpoints and
+  commands (.NET); `ModeSelector`/`DA` blocks are not drawn yet.
 - Mixing IThis variables and block paths in one symbol works but reports STY-01.
 
 `eae_hmi_design_suggest` drafts Agile CATs from their blocks (walking `acX` → `Equipment` → blocks): Real/Integer
-→ `value`, Bool → `state`, String → `text`; controls are listed under `not_drawn`.
+→ `value`, Bool → `state`, String → `text`, Control_Real → `setpoint`, Control_Bool → `state` + toggle `command`,
+Control_Integer → `command`s; other blocks are listed under `not_drawn`.

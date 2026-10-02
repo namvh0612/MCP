@@ -172,7 +172,9 @@ def _bridge_stubs(sol, cat_name, design) -> str:
         out.append(f"namespace {ns} {{ public class {cls} : NxtControl.GuiFramework.Shape {{ public void BeginInit() {{}} "
                    "public void EndInit() {} public NxtControl.Drawing.Matrix2D DesignMatrix { get; set; } "
                    "public uint SecurityToken { get; set; } public string TagName { get; set; } "
-                   f"public event EventHandler OnValChanged; {props} }} }}")
+                   f"public event EventHandler OnValChanged; {props} "
+                   + (f"public bool FireEvent_CNF({br.val_type} v) {{ return true; }} " if br.control else "")
+                   + "} }")
     return "\n".join(out)
 
 
@@ -225,3 +227,110 @@ def test_agile_paths_are_checked(solar_dir, tmp_path):
         sa_tools.build_symbol(sol, "acFlowTransmitter_v1_0", sb.SymbolDesign("X", [sb.ElementSpec("value", "Equipment.NOPE")]))
     with pytest.raises(EditError, match="a value element needs a number"):
         sa_tools.build_symbol(sol, "acFlowTransmitter_v1_0", sb.SymbolDesign("X", [sb.ElementSpec("value", "Equipment.IA")]))
+
+
+CMD_HMI = Interface(event_inputs=[Event("REQ", with_vars=["Flow"])],
+                    event_outputs=[Event("SET", with_vars=["Setpoint"]), Event("START", with_vars=["Start"]),
+                                   Event("RESET")],
+                    input_vars=[Var("Flow", "REAL")], output_vars=[Var("Setpoint", "REAL"), Var("Start", "BOOL")])
+CMD_DESIGN = sb.SymbolDesign("Valve V-1", [
+    sb.ElementSpec("value", "Flow", unit="m3/h", range=(0, 120)),
+    sb.ElementSpec("setpoint", "Setpoint", label="SP", unit="m3/h"),
+    sb.ElementSpec("command", "START", label="Start", value="true", confirm=True),
+    sb.ElementSpec("command", "RESET", label="Reset")])
+
+
+def test_basic_commands(golden_dir, library_store, tmp_path):
+    root = tmp_path / "g"
+    shutil.copytree(golden_dir, root)
+    cat_edit.create_cat(_sol(root, library_store), "catValve", hmi=CMD_HMI).apply()
+    cs = sa_tools.build_symbol(_sol(root, library_store), "catValve", CMD_DESIGN)
+    assert any("NET symbol only" in w for w in cs.warnings)
+    cs.apply()
+    base = root / "HMI/catValve/catValve_sSA.cnv"
+    designer = Path(f"{base}.Designer.cs").read_bytes().decode("utf-8-sig")
+    d = ds.parse(designer)
+    assert {"spSetpoint", "cmdSTART2", "cmdRESET3"} <= set(d.objects)
+    assert "this.spSetpoint = new System.HMI.Symbols.Base.TextBox<float>();" in designer
+    assert 'this.spSetpoint.TagName = "Setpoint";' in designer and "this.spSetpoint.IsOnlyInput = false;" in designer
+    assert "this.cmdSTART2 = new NxtControl.GuiFramework.DrawnButton();" in designer
+    assert "this.cmdSTART2.Click += new System.EventHandler(this.cmdSTART2Click);" in designer
+    code = Path(f"{base}.cs").read_text()
+    assert "FireEvent_START(true);" in code and "FireEvent_RESET();" in code and "MessageBox.Show(\"Start?\"" in code
+    web = (root / "WEB/catValve/catValve_seSA.sym.json").read_text(encoding="utf-8-sig")
+    assert "cmdSTART" not in web and "spSetpoint" not in web
+    ws = services.Workspace(Config(roots=[]))
+    s = ws.open(str(root))
+    for name in ("sSA", "seSA"):
+        assert services.hmi_review(s, ws, name=f"catValve.{name}")["displays"][0]["findings"] == []
+    if shutil.which("mcs"):
+        fire = tmp_path / "fire.cs"
+        fire.write_text("namespace HMI.Main.Symbols.catValve { partial class sSA { public bool FireEvent_START(bool Start) "
+                        "{ return true; } public bool FireEvent_RESET() { return true; } } }")
+        out = subprocess.run(["mcs", "-target:library", "-nowarn:67,169,414,649", f"-out:{tmp_path / 'v.dll'}",
+                              str(HERE / "stubs/eae_stubs.cs"), str(fire), f"{base}.Designer.cs", f"{base}.cs"],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stdout + out.stderr
+
+
+def test_command_design_errors(golden_dir, library_store, tmp_path):
+    root = tmp_path / "g"
+    shutil.copytree(golden_dir, root)
+    cat_edit.create_cat(_sol(root, library_store), "catValve", hmi=CMD_HMI).apply()
+    sol = _sol(root, library_store)
+    for el, msg in ((sb.ElementSpec("command", "START"), "value sent with Start"),
+                    (sb.ElementSpec("command", "Flow", value="1"), "not an output event"),
+                    (sb.ElementSpec("setpoint", "Start"), "needs a number"),
+                    (sb.ElementSpec("setpoint", "Flow"), "not an output variable")):
+        with pytest.raises(EditError, match=msg):
+            sa_tools.build_symbol(sol, "catValve", sb.SymbolDesign("V", [el]), technology="hmi")
+
+
+def test_agile_commands(solar_dir, tmp_path):
+    from eae_mcp.project import agile_edit as ag
+    root = tmp_path / "s"
+    shutil.copytree(solar_dir, root)
+    sigs = [ag.AgileSignal("FLOW", "indication", "real", 0, 120, "m3/h", 1),
+            ag.AgileSignal("SP", "control", "real", 0, 120, "m3/h", 1, default="50.0"),
+            ag.AgileSignal("ENABLE", "control", "bool"), ag.AgileSignal("MODE", "control", "integer")]
+    ag.create_agile_cat(load_solution(root), "acPump_v1_0", sigs).apply()
+    design = sb.SymbolDesign("P-101", [
+        sb.ElementSpec("value", "FLOW", range=(0, 120), unit="m3/h"),
+        sb.ElementSpec("setpoint", "SP", label="Flow SP", step=5),
+        sb.ElementSpec("state", "ENABLE", label="Enabled", states={"true": "Yes", "false": "No"}),
+        sb.ElementSpec("command", "ENABLE", label="Enable / disable", value="toggle", confirm=True),
+        sb.ElementSpec("command", "MODE", label="Auto", value="1")])
+    sol = load_solution(root)
+    cs = sa_tools.build_symbol(sol, "acPump_v1_0", design)
+    cs.apply()
+    base = root / "HMI/acPump_v1_0/acPump_v1_0_sSA.cnv"
+    code = Path(f"{base}.cs").read_text()
+    assert "xSP.FireEvent_CNF((float)v);" in code and "xENABLE.FireEvent_CNF(!xENABLE.Val);" in code
+    assert "xMODE.FireEvent_CNF(((short)(1)));" in code and "double lo = xSP.ValMinimum" in code
+    ws = services.Workspace(Config(roots=[]))
+    r = services.hmi_review(ws.open(str(root)), ws, name="acPump_v1_0.sSA")
+    assert r["displays"][0]["findings"] == [] and r["cat_reviews"][0]["style"] == "agile"
+    assert not [f for f in r["cat_reviews"][0]["findings"] if f["rule"] in ("AG-01", "BIND-01")]
+    with pytest.raises(EditError, match="needs an HMI_Control"):
+        sa_tools.build_symbol(sol, "acPump_v1_0", sb.SymbolDesign("P", [sb.ElementSpec("command", "FLOW", value="1")]),
+                              technology="hmi", symbol="sX")
+    with pytest.raises(EditError, match="step"):
+        sa_tools.build_symbol(sol, "acPump_v1_0", sb.SymbolDesign("P", [sb.ElementSpec("setpoint", "SP")]),
+                              technology="hmi", symbol="sX")
+    if shutil.which("mcs"):
+        stubs = tmp_path / "bridges.cs"
+        stubs.write_text(_bridge_stubs(sol, "acPump_v1_0", design))
+        out = subprocess.run(["mcs", "-target:library", "-nowarn:67,169,414,649,162,219", f"-out:{tmp_path / 'p.dll'}",
+                              str(HERE / "stubs/eae_stubs.cs"), str(stubs), f"{base}.Designer.cs", f"{base}.cs"],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stdout + out.stderr
+    if shutil.which("tsc"):
+        ts = tmp_path / "sym.ts"
+        ts.write_text((root / "WEB/acPump_v1_0/acPump_v1_0_seSA.sym.ts").read_text(encoding="utf-8-sig"))
+        stub = tmp_path / "stubs.d.ts"
+        stub.write_text("declare namespace NxtControl.GuiFramework { class RuntimeSymbol { constructor(); "
+                        "find(name: string): any; load(options: any): this; } }\n"
+                        "declare namespace System { function DefaultValue(v: any): any; }\n")
+        out = subprocess.run(["tsc", "--noEmit", "--experimentalDecorators", "--target", "es2017", "--strict", "false",
+                              "--noImplicitAny", "true", str(stub), str(ts)], capture_output=True, text=True)
+        assert out.returncode == 0, out.stdout + out.stderr

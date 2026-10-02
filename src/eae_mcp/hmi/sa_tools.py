@@ -36,10 +36,15 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
     if hmi_td is None:
         raise EditError(f"CAT {td.name} has no HMI interface type.")
     from . import agile_blocks as ab
-    ithis = {v.name for v in hmi_td.interface.input_vars}
+    hitf = hmi_td.interface
+    ithis = {v.name for v in hitf.input_vars}
+    out_vars = {v.name: v.type for v in hitf.output_vars if v.name not in ("QO", "STATUS")}
+    out_events = {ev.name for ev in hitf.event_outputs if ev.name != "INITO"}
     bridges = {}
     for e in design.elements:
         if e.var in ithis or e.var in bridges:
+            continue
+        if (e.kind == "setpoint" and e.var in out_vars) or (e.kind == "command" and e.var in out_events):
             continue
         br = ab.bridge(sol, cat, e.var)
         if br is None:
@@ -54,6 +59,8 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
     except (sb.DesignError, ValueError) as e:
         raise EditError(str(e)) from e
     types = {v.name: v.type for v in hmi_td.interface.input_vars}
+    types.update(out_vars)
+    hmi_outputs = {ev.name: [(w, out_vars.get(w, "")) for w in ev.with_vars] for ev in hitf.event_outputs}
     types.update({var: sb.PSEUDO_IEC[br.val_type] for var, br in bridges.items()})
     boxes, W, H = sb.layout(design, bridges)
     signal_vars = [e.var for e in design.elements if e.var in ithis and e.var != "AssetName"]
@@ -81,7 +88,7 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
         gate_issues += sb.gate("hmi", symbol, designer, None)
         _put(cs, sol.root, f"{base}.cnv.Designer.cs", designer.encode("utf-8"))
         _put(cs, sol.root, f"{base}.cnv.cs", sb.dotnet_code_behind(header, sym_ns, symbol, boxes, types,
-                                                                                 bridges).encode("utf-8"))
+                                                                                 bridges, hmi_outputs).encode("utf-8"))
         _put(cs, sol.root, f"{base}.cnv.resx", sb.dotnet_resx(w.template("cat/cnv.resx"), boxes, W, H))
     if technology in ("ehmi", "both"):
         w.check_identifier(web_symbol, "web symbol name")

@@ -34,6 +34,11 @@ class Bridge:
         return self.val_type in ("float", "double", "short", "int", "ushort", "byte")
 
     @property
+    def control(self) -> bool:
+        """HMI_Control_* blocks: the bridge also writes (FireEvent_CNF(value), as SolarPlantDemo acSimLogic)."""
+        return self.block.startswith("HMI_Control_")
+
+    @property
     def has_span(self) -> bool:
         return {"ValMinimum", "ValMaximum"} <= self.props
 
@@ -95,13 +100,28 @@ def suggest(sol: Solution, cat, title: str) -> dict:
     """Draft SA design for an Agile CAT: one element per HMI indication block, bound by sub-CAT path.
 
     Real/Integer → value (units, decimals and — on .NET — the span come from the block at runtime),
-    Bool → state, String → text. Controls (HMI_Control_*) and mode selectors are commands, not drawn yet.
+    Bool → state, String → text; HMI_Control_Real → setpoint, HMI_Control_Bool → state + toggle command,
+    HMI_Control_Integer → command(s). Mode selectors and other blocks are listed under not_drawn.
     """
     elements, questions, skipped = [], [], []
     for path, typ in blocks(sol, cat):
         b = bridge(sol, cat, path)
-        if b is None or not typ.startswith("HMI_Indication_"):
+        if b is None or not typ.startswith(("HMI_Indication_", "HMI_Control_")):
             skipped.append({"path": path, "type": typ})
+            continue
+        if b.control:
+            if b.val_type in ("float", "short") and typ.startswith("HMI_Control_Real"):
+                elements.append({"kind": "setpoint", "var": path, "step": None})
+                questions.append(f"{path}: -/+ step of the setpoint (engineering units)")
+            elif b.val_type == "bool":
+                elements.append({"kind": "state", "var": path, "states": {"false": "Off", "true": "On"}, "abnormal": []})
+                elements.append({"kind": "command", "var": path, "value": "toggle", "confirm": False})
+                questions.append(f"{path}: button text, true/false/toggle, confirmation; state texts")
+            elif b.val_type == "short":
+                elements.append({"kind": "command", "var": path, "value": None, "confirm": False})
+                questions.append(f"{path}: one command per value to send (e.g. modes 0/1/2) with its button text")
+            else:
+                skipped.append({"path": path, "type": typ})
             continue
         if b.val_type == "bool":
             elements.append({"kind": "state", "var": path, "states": {"false": "Off", "true": "On"}, "abnormal": []})
@@ -116,7 +136,7 @@ def suggest(sol: Solution, cat, title: str) -> dict:
             elements.append({"kind": "text", "var": path})
             if not b.web_class:
                 questions.append(f"{path}: HMI_Indication_String has no eHMI bridge; use technology='hmi'")
-    order = {"alarm": 0, "value": 1, "state": 2, "text": 3}
+    order = {"alarm": 0, "value": 1, "state": 2, "text": 3, "setpoint": 4, "command": 5}
     elements.sort(key=lambda e: order[e["kind"]])
     return {"title": title, "elements": elements, "missing": questions, "not_drawn": skipped,
             "note": "Agile style: elements bind to HMI block paths (embedded sValChanged / seValChanged bridges). "
