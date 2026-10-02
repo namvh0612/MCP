@@ -87,6 +87,7 @@ interfaces of the system-library types the solution uses. Copy the solution and 
 | `eae_generic_fbs` | Generic FB types (VALFORMAT_…, PERSISTENCE_…): parameters and pins learned from the solution |
 | `eae_knowledge` | Search the built-in knowledge and return only the matching sections |
 | `eae_http_probe` | Try a REST API (GET/HEAD, opt-in per host) and get the JSON fields for a generated client |
+| `eae_hmi_scripts` | HMI support classes (`*.spt.cs`) and alarm-word profiles cross-checked with the logic (ALM-06…10) |
 | `eae_hmi_design_suggest` | Draft SA symbol design from a CAT's IThis inputs (basic) or its HMI blocks (Agile) + the engineering data still missing |
 | `eae_hmi_review` | Situation-awareness / High Performance HMI review of canvases, navigation and alarm classes |
 
@@ -101,6 +102,7 @@ this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRI
 | `eae_datatype_create`, `eae_datatype_update` | New/changed DataType: struct, enum, array, subrange |
 | `eae_basic_create` | New Basic FB: interface, internal vars, ECC, ST algorithms |
 | `eae_agile_cat_create` | Create an Agile-style CAT (SE.Agile): logic Basic FB with HMI adapters, one HMI_Indication/HMI_Control block per signal, InitComponent skeleton |
+| `eae_alarm_profile_add` | Add alarm texts (bit, active/clear text, priority helper) to an alarm-word profile |
 | `eae_agile_signal_add` | Add signals (HMI blocks + logic adapters + wiring + HMI_INIT chain) to an existing Agile CAT |
 | `eae_rest_client_create` | Generate a REST/HTTP client CAT (DNS-free NETIO TLS, request/response FBs, JSON extraction, HMI) |
 | `eae_function_create`, `eae_function_update` | Helper Functions (POU): inputs/outputs/VAR_IN_OUT, temp vars, ST |

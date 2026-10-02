@@ -759,6 +759,12 @@ def hmi_review(sol: Solution, ws: Workspace, name: str | None = None, technology
     classes, alarm_findings = ([], []) if name else rv.review_alarm_classes(sol, theme)
     for x in nav + alarm_findings:
         totals[x.rule] = totals.get(x.rule, 0) + 1
+    profile_findings = []
+    if not name:
+        from .hmi import scripts as sc
+        profile_findings = sc.alarm_profiles(sol)["findings"]
+        for f in profile_findings:
+            totals[f["rule"]] = totals.get(f["rule"], 0) + 1
     if name:
         cats_out = [styled[by_name[d.cat]] for d in docs if d.cat in by_name][:1]
     else:
@@ -773,7 +779,8 @@ def hmi_review(sol: Solution, ws: Workspace, name: str | None = None, technology
                                  "mixed = both in one CAT"},
             "cat_reviews": cats_out,
             "displays": displays, "navigation": rv.to_dict(nav),
-            "alarm_classes": classes, "alarm_findings": rv.to_dict(alarm_findings), "rule_counts": totals,
+            "alarm_classes": classes, "alarm_findings": rv.to_dict(alarm_findings) + profile_findings,
+            "rule_counts": totals,
             "manual_checks": rv.MANUAL_CHECKS,
             "note": "Static review of display files; colors set in code-behind at runtime are not seen. "
                     "Rules are heuristics from ISA-101, ASM, High Performance HMI and ISA-18.2; a site style "

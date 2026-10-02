@@ -87,6 +87,13 @@ class AgileSignalSpec(BaseModel):
                            self.default)
 
 
+class AlarmTextSpec(BaseModel):
+    bit: int
+    active: str = Field(description="Text while the alarm is active (what is wrong, where)")
+    clear: str = Field(description="Text when it clears")
+    helper: str = Field(description="Profile helper giving the priority, e.g. Alarm or Warning")
+
+
 class EventSpec(BaseModel):
     name: str
     comment: str | None = None
@@ -373,6 +380,16 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
         the HMI_INIT chain. The logic's ECC/ST is not changed: the result lists the lines to add."""
         sigs = [x.to_model() for x in signals]
         return change(solution, lambda s: agile_edit.add_signals(s, cat, sigs, logic), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_alarm_profile_add(profile: str, alarms: list[AlarmTextSpec], dry_run: bool = True,
+                              solution: str | None = None) -> dict:
+        """Add alarm texts to an existing alarm-word profile in an HMI support class (see eae_hmi_scripts), in
+        the file's own layout. Use it for ALM-06 findings: the bit's ST condition/comment is the evidence; write
+        texts that name the condition (ISA-18.2) and pick the priority helper from the consequence."""
+        from .hmi import scripts as sc
+        rows = [(a.bit, a.active, a.clear, a.helper) for a in alarms]
+        return change(solution, lambda s: sc.add_profile_entries(s, profile, rows), dry_run)
 
     # -- M4: eHMI canvases ------------------------------------------------------------------------
 

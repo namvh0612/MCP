@@ -1,3 +1,5 @@
+import pytest
+
 from eae_mcp import services
 from eae_mcp.config import Config
 from eae_mcp.hmi import review as rv
@@ -42,3 +44,33 @@ def test_synthetic_rules():
     d.fonts = [("A", 6.0)]
     rules = {f.rule for f in rv.review_display(d, {}, level=1)}
     assert {"HP-01", "HP-02", "HP-04", "HP-06", "HP-07", "HP-10"} <= rules
+
+
+def test_alarm_profiles_cross_check(solar_dir, tmp_path):
+    import shutil
+
+    from eae_mcp.hmi import scripts as sc
+    from eae_mcp.project.solution import load_solution
+    root = tmp_path / "s"
+    shutil.copytree(solar_dir, root)
+    sol = load_solution(root)
+    assert "HMI/SolarAlarmProfiles.spt.cs" in [x.file for x in sc.list_scripts(sol)]
+    r = sc.alarm_profiles(sol)
+    assert {p["name"] for p in r["profiles"]} >= {"PVArray", "Inverter", "OwnLoad", "Grid", "PPC"}
+    by = {(f["rule"], f["where"].split(": ")[1]): f for f in r["findings"]}
+    # fbOwnLoad sets bit 5 ("Energy measurement invalid") but the profile has no text for it
+    assert by[("ALM-06", "OwnLoad")]["evidence"]["5"] == {"condition": "OwnLoad.ELOAD < 0.0",
+                                                           "comment": "Energy measurement invalid"}
+    assert ("ALM-07", "Grid") in by  # bit 2 described, never set by fbGrid
+    assert ("ALM-09", "Inverter") in by
+    cs = sc.add_profile_entries(sol, "OwnLoad", [(5, "Energy measurement invalid", "Energy measurement restored",
+                                                  "Warning")])
+    cs.apply()
+    r = sc.alarm_profiles(load_solution(root))
+    assert ("ALM-06", "OwnLoad") not in {(f["rule"], f["where"].split(": ")[1]) for f in r["findings"]}
+    own = next(p for p in r["profiles"] if p["name"] == "OwnLoad")
+    assert own["alarms"] == 6 and own["entries"][-1]["priority"] == "Warning"
+    with pytest.raises(Exception, match="already described"):
+        sc.add_profile_entries(load_solution(root), "OwnLoad", [(5, "x", "y", "Warning")])
+    with pytest.raises(Exception, match="Helper"):
+        sc.add_profile_entries(load_solution(root), "OwnLoad", [(6, "x", "y", "Critical")])

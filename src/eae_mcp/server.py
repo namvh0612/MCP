@@ -146,6 +146,18 @@ def create_server(config: Config | None = None) -> MCPServer:
         level 1-4 of the reviewed display(s) for density/trend rules. Background: eae_knowledge 'hmi design'."""
         return run(services.hmi_review, sol(solution), ws, name, technology, level)
 
+    @mcp.tool(annotations=READ_ONLY)
+    def eae_hmi_scripts(solution: str | None = None) -> dict:
+        """HMI support classes (*.spt.cs: themes, helpers, event logs) and alarm-word profiles: arrays such as
+        `AlarmDefinition[] Inverter = { Alarm(0, "active", "clear"), … }` cross-checked with the Basic FBs that
+        pack alarm bits into a WORD (`AlarmWord.3 := …;` published through an HMI_Indication_Integer block).
+        Findings: ALM-06 bit set by the logic without text (with the ST condition and comment as hints),
+        ALM-07 text for a bit never set, ALM-08 duplicate/oversized bits, ALM-09 priority distribution,
+        ALM-10 duplicate or missing texts. Add missing texts with eae_alarm_profile_add."""
+        from .hmi import scripts as sc
+        s = sol(solution)
+        return {"scripts": [vars(x) for x in sc.list_scripts(s)], **sc.alarm_profiles(s)}
+
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
                                           openWorldHint=True))
     def eae_http_probe(url: str, method: str = "GET", token: str | None = None, auth: str = "bearer",

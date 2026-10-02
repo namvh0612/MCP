@@ -60,6 +60,13 @@ give level 4 without extra canvases.
 - In EAE: alarm classes live in `HMI/Alarms/SystemAlarmClasses.xml` / `AlarmClasses.xml`
   (`<Class Name Prio>` with `State Came/CameNA/GoneNA` colors and a `Shortcut` letter); the review
   checks them (ALM-01…05).
+- **Alarm-word profiles** (SolarPlantDemo convention, read by `eae_hmi_scripts`): the logic packs alarm bits into a
+  WORD (`AlarmWord.3 := <condition>;`, often with a `(* Bit 3: … *)` comment) and publishes it through an
+  `HMI_Indication_Integer` block (`ALMW`); an HMI support class (`*.spt.cs`) maps bit → active text, clear text and
+  priority (`Alarm(3, "…", "…")`, `Warning(…)`). The review cross-checks both sides: **ALM-06** a bit the logic sets
+  has no text (the operator sees nothing meaningful), **ALM-07** a text for a bit never set, **ALM-08**
+  duplicate/oversized bits, **ALM-09** priority distribution (aim ≈ 5% high / 15% medium / 80% low), **ALM-10**
+  duplicate or missing texts. `eae_alarm_profile_add` appends texts in the file's own layout.
 
 ## Applying it in EAE with eae-mcp
 

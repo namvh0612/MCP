@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Alarm-word profiles:** `eae_hmi_scripts` lists HMI support classes and reads alarm-word profiles
+  (`AlarmDefinition[]` arrays), cross-checked with the bits the logic sets (`AlarmWord.N := …`): ALM-06…10 (found in
+  SolarPlantDemo: fbOwnLoad bit 5 "Energy measurement invalid" has no text, the Grid profile describes bit 2 that
+  fbGrid never sets). `eae_alarm_profile_add` appends texts in the file's layout; `eae_hmi_review` includes these.
+
 - **HMI commands:** SA symbols can carry operator actions (.NET HMI): `setpoint` (entry on an IThis output
   variable, or −/+ steps on an Agile HMI_Control_Real/Integer block) and `command` buttons (fire an IThis output
   event, or write true/false/toggle/an integer to an Agile control block), with optional confirmation.
