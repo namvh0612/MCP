@@ -20,7 +20,10 @@ Start with eae_list_solutions / eae_open_solution, then eae_summary.
 - eae_explain explains any type, application instance, HMI canvas/symbol or device.
 - eae_trace follows HMI canvas → instance → CAT → sub-CATs → algorithms.
 - eae_show_component_files lists every file a component consists of (a CAT spans ~20 files).
-All tools are read-only in this version. Names are accepted everywhere; IDs are resolved internally.
+Write tools (eae_adapter_create, eae_datatype_create, eae_basic_create, eae_fb_update_interface,
+eae_basic_upsert_algorithm, eae_basic_update_ecc, eae_datatype_update) default to dry_run=true and
+return a diff; writing needs allow_write in the server config. Run eae_validate after changes.
+Names are accepted everywhere; IDs are resolved and generated internally.
 """
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
@@ -177,6 +180,10 @@ def create_server(config: Config | None = None) -> MCPServer:
         without EAE. Does not modify the solution."""
         s = sol(solution)
         return run(services.catalog_build, ws, s, store, output)
+
+    from .server_write import register_write_tools
+
+    register_write_tools(mcp, ws, run, sol)
 
     # -- resources --------------------------------------------------------------------------
 

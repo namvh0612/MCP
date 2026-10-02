@@ -4,8 +4,9 @@ An MCP server for understanding **EcoStruxure Automation Expert (EAE) 26** solut
 Basic/Composite FBs, SubApps, Functions, CATs, the System (applications, devices, resources, mapping),
 .NET HMI and eHMI.
 
-Version 0.1 (milestone M1) is **read-only**. It indexes a solution's files directly (no EAE API is needed),
-resolves EAE's ID-based references to names, and explains how the pieces fit together.
+It indexes a solution's files directly (no EAE API is needed), resolves EAE's ID-based references to names,
+explains how the pieces fit together (M1), and creates/edits Adapters, DataTypes and Basic FBs exactly the way
+EAE writes them (M2).
 
 ## Install (Windows, next to EAE)
 
@@ -79,6 +80,30 @@ interfaces of the system-library types the solution uses. Copy the solution and 
 | `eae_show_component_files` | Every file of a component and its role |
 | `eae_doc_scaffold` | Markdown doc skeleton with screenshot placeholders |
 | `eae_catalog_build` | Index system-library types from the library store |
+| `eae_validate` | Static checks: identifiers, reserved words, WITH, ECC, connections, registration |
+
+### Write tools (M2)
+
+All write tools default to **`dry_run=true`** and return a unified diff. Pass `dry_run=false` to write;
+this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRITE=1`).
+
+| Tool | Purpose |
+|---|---|
+| `eae_adapter_create` | New Adapter (`.adp` + `.doc.xml`, registered in `.dfbproj`, optional folder) |
+| `eae_datatype_create`, `eae_datatype_update` | New/changed DataType: struct, enum, array, subrange |
+| `eae_basic_create` | New Basic FB: interface, internal vars, ECC, ST algorithms |
+| `eae_fb_update_interface` | Add/remove events and variables, change WITH; existing IDs and wiring are kept |
+| `eae_basic_upsert_algorithm` | Add or replace an ST algorithm |
+| `eae_basic_update_ecc` | Add/remove states and transitions, replace a state's actions |
+
+Every write:
+- backs up modified files to `<solution>/.eae-mcp/backup/<timestamp>/`;
+- appends to `<solution>/.eae-mcp/audit.jsonl`;
+- writes atomically;
+- refuses if a file changed on disk after it was read.
+
+EAE reloads changed files automatically. Do not keep unsaved edits to the same type open in EAE.
+After writing, run **Tools › Check Changes** in EAE.
 
 Resources: `eae://concepts/{overview, adapter, datatype, basic-fb, composite-fb, subapp, function, cat,
 system, hmi-dotnet, ehmi, folders, library}`, `eae://solution/summary`, `eae://type/{name}`.
@@ -86,7 +111,7 @@ Prompts: `learn_component`, `review_application`, `design_basic_fb`, `design_cat
 
 ## Safety
 
-- Read-only. Write tools arrive in M2 behind `allow_write`.
+- Read-only unless `allow_write` is set. Write tools are dry-run by default.
 - Only paths inside `roots` are opened.
 - Security material is never read: `General/Security`, certificates, `se-rbac-*.json`, `*.db`.
 - `bin/`, `obj/` and `SnapshotCompiles/` are ignored.

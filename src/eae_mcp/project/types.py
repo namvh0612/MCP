@@ -90,12 +90,13 @@ def parse_interface(el: etree._Element | None) -> Interface:
             itf.input_vars = [parse_var(v) for v in children(section)]
         elif name in ("OutputVars", "SubAppOutputVars"):
             itf.output_vars = [parse_var(v) for v in children(section)]
+        # An interface may contain both <AdapterInputs>/<AdapterOutputs> and <Sockets>/<Plugs>.
         elif name in ("AdapterInputs", "Sockets"):
             role = "socket" if name == "Sockets" else "input"
-            itf.adapter_inputs = [_adapter(a, role) for a in children(section)]
+            itf.adapter_inputs += [_adapter(a, role) for a in children(section)]
         elif name in ("AdapterOutputs", "Plugs"):
             role = "plug" if name == "Plugs" else "output"
-            itf.adapter_outputs = [_adapter(a, role) for a in children(section)]
+            itf.adapter_outputs += [_adapter(a, role) for a in children(section)]
     return itf
 
 

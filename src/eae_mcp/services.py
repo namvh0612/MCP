@@ -118,7 +118,7 @@ def find_type(sol: Solution, name: str) -> TypeDef:
     return td
 
 
-def network_view(net: Network | None, sol: Solution) -> dict | None:
+def network_view(net: Network | None, sol: Solution, owner: TypeDef | None = None) -> dict | None:
     """Human-readable network: instances with resolved parameters, connections by name."""
     if net is None:
         return None
@@ -136,8 +136,8 @@ def network_view(net: Network | None, sol: Solution) -> dict | None:
         })
     connections = []
     for c in net.connections:
-        src = resolve_reference(c.source, net, sol)
-        dst = resolve_reference(c.destination, net, sol)
+        src = resolve_reference(c.source, net, sol, owner)
+        dst = resolve_reference(c.destination, net, sol, owner)
         connections.append({
             "kind": c.kind, "from": str(src), "to": str(dst),
             **({"unresolved": True} if not (src.resolved and dst.resolved) else {}),
@@ -154,7 +154,7 @@ def type_view(sol: Solution, td: TypeDef, include_xml: bool = False) -> dict:
     data.pop("network", None)
     data["qualified_name"] = td.qualified_name
     if td.network is not None:
-        data["network"] = network_view(td.network, sol)
+        data["network"] = network_view(td.network, sol, td)
     if td.kind == "cat" and td.qualified_name in sol.cats:
         data["cat_manifest"] = to_dict(sol.cats[td.qualified_name])
     data["concept"] = f"eae://concepts/{CONCEPT_FOR_KIND.get(td.kind, 'overview')}"
@@ -257,7 +257,7 @@ def cat_describe(sol: Solution, ws: Workspace, name: str) -> dict:
         "comment": td.comment,
         "folder": td.folder,
         "interface": to_dict(td.interface),
-        "network": network_view(td.network, sol),
+        "network": network_view(td.network, sol, td),
         "hmi_interface": {
             "instance": cfg.hmi_interface if cfg else None,
             "type": hmi_itf.qualified_name if hmi_itf else None,
@@ -597,3 +597,57 @@ def catalog_build(ws: Workspace, sol: Solution, store: str | None = None, output
 
 
 _ = KIND_TO_CATEGORY  # re-exported for callers that map kinds to folder categories
+
+
+# -- writing (M2) ------------------------------------------------------------------------
+
+
+def eae_running() -> bool:
+    """Best effort: is EAE Buildtime running on this (Windows) machine?"""
+    import subprocess
+    import sys
+
+    if sys.platform != "win32":
+        return False
+    try:
+        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq EcoStruxureAutomationExpert.exe"],
+                             capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return "EcoStruxureAutomationExpert.exe" in out
+
+
+def run_change(ws: Workspace, sol: Solution, build, dry_run: bool) -> dict:
+    """Build a ChangeSet; return its diff (dry run) or apply it and reload the solution."""
+    from .project.edit import EditError
+    from .project.writer import SpecError
+
+    try:
+        cs = build()
+    except (EditError, SpecError, FileExistsError) as e:
+        raise NotFound(str(e)) from e
+    result = {"action": cs.description, "files": cs.summary(), "warnings": cs.warnings}
+    if dry_run:
+        result["dry_run"] = True
+        result["diff"] = cs.diff()
+        result["next_step"] = "Review the diff, then call again with dry_run=false to write."
+        return result
+    if not ws.config.allow_write:
+        raise NotFound("Writing is disabled. Set allow_write = true under [project] in eae-mcp.toml "
+                       "(or EAE_MCP_ALLOW_WRITE=1) and restart the server.")
+    result.update(cs.apply())
+    if eae_running():
+        result["note"] = ("EAE is running: it reloads changed files automatically, but unsaved edits to the "
+                          "same files inside EAE would overwrite these changes when saved there.")
+    ws.open(str(sol.root))  # re-index
+    result["next_step"] = "Open the type in EAE (or Tools › Check Changes) to verify it compiles."
+    return result
+
+
+def validate(sol: Solution, name: str | None = None) -> dict:
+    from .project.validate import validate_solution
+
+    try:
+        return validate_solution(sol, name)
+    except LookupError as e:
+        raise NotFound(str(e)) from e

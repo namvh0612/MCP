@@ -20,7 +20,12 @@ async def test_tools_listed_and_read_only(golden_dir):
         tools = (await client.list_tools()).tools
         names = {t.name for t in tools}
         assert {"eae_open_solution", "eae_explain", "eae_trace", "eae_cat_describe", "eae_hmi_describe"} <= names
-        assert all(t.annotations.read_only_hint for t in tools if t.name != "eae_catalog_build")
+        writers = {"eae_catalog_build", "eae_adapter_create", "eae_datatype_create", "eae_datatype_update",
+                   "eae_basic_create", "eae_fb_update_interface", "eae_basic_upsert_algorithm", "eae_basic_update_ecc"}
+        assert {t.name for t in tools if not t.annotations.read_only_hint} == writers
+        modifying = {t.name for t in tools if t.annotations.destructive_hint}
+        assert modifying == {"eae_datatype_update", "eae_fb_update_interface", "eae_basic_upsert_algorithm",
+                             "eae_basic_update_ecc"}
 
 
 async def test_open_and_explain_over_mcp(golden_dir):

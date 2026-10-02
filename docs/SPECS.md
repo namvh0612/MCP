@@ -1,6 +1,6 @@
 # EAE-MCP — MCP Server Specification for EcoStruxure Automation Expert 26
 
-> Status: **v0.4** — M0 done (golden files C0–C11); M1 implemented (read-only server, see README). M2 (write tools) is next. Based on `SolarPlantDemo_v7` and the `EAE_MCP_Golden` captures (EAE 26.0).
+> Status: **v0.4** — M0 done (golden files C0–C11); M1 and M2 implemented (read + write for Adapter, DataType, Basic FB; see README). M2 awaits acceptance in EAE (`docs/ACCEPTANCE_M2.md`); M3 (networks) is next. Based on `SolarPlantDemo_v7` and the `EAE_MCP_Golden` captures (EAE 26.0).
 > Companion documents:
 > - [`EAE_FILE_FORMATS.md`](EAE_FILE_FORMATS.md): EAE 26 file formats, reverse-engineered from the sample.
 > - [`VERIFICATION_CHECKLIST.md`](VERIFICATION_CHECKLIST.md): steps to perform in a real EAE installation.
@@ -337,7 +337,7 @@ A fixture-trimming script (`scripts/make_fixture.py`) performs this removal so i
 |---|---|---|
 | **M0** | Finalize specs. User runs checklist C0–C11 in EAE and sends zips and screenshots | Golden files exist for Adapter, DataType, Basic, Composite, SubApp, CAT, .NET HMI symbol/canvas, eHMI symbol/canvas |
 | **M1** ✅ (2026-10-02) | Server skeleton, config, safety, lossless round-trip, solution index, catalog, resolver, read-only tools (§5.1, read parts of §5.7–5.10), knowledge layer (§4) | Claude can read and explain every component of SolarPlantDemo, including both HMIs |
-| **M2** | Write Adapter, DataType, Basic FB; `eae_validate` | Created files build in EAE |
+| **M2** ✅ (2026-10-02, pending EAE acceptance) | Write Adapter, DataType, Basic FB; `eae_validate` | Created files build in EAE |
 | **M3** | Networks (Composite/SubApp/Layer) and resource mapping | Same |
 | **M4** | CAT (create, sub-CAT, OPC UA) + eHMI write (symbol, canvas) | A new CAT renders on an eHMI canvas |
 | **M5** | .NET HMI write (symbol, faceplate, canvas) | A new CAT renders on an HMI canvas |

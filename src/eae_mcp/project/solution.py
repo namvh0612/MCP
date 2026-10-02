@@ -226,7 +226,7 @@ class ResolvedEnd:
         return f"{self.node}.{self.pin}" if self.node else self.pin
 
 
-def resolve_reference(ref: str, network: Network, sol: Solution) -> ResolvedEnd:
+def resolve_reference(ref: str, network: Network, sol: Solution, owner: TypeDef | None = None) -> ResolvedEnd:
     """Turn a stored reference (`$<node>.<pin>`, `$<pinId>`, `node.pin`) into names.
 
     `<node>` matches an instance/boundary-pin ID first, then a name. `<pin>` matches the
@@ -244,6 +244,15 @@ def resolve_reference(ref: str, network: Network, sol: Solution) -> ResolvedEnd:
 
     node_key, pin_key = body.split(".", 1)
     inst = by_id.get(node_key) or by_name.get(node_key)
+    if inst is None and owner is not None:
+        # Inside a composite, an adapter pin of the enclosing type behaves like an instance
+        # of the adapter type: `$<adapter decl ID or name>.<adapter event/var ID or name>`.
+        itf = owner.interface
+        decl = next((a for a in itf.adapter_inputs + itf.adapter_outputs if node_key in (a.id, a.name)), None)
+        if decl is not None:
+            at = sol.find_type(decl.type, decl.namespace)
+            pin_name = at.interface.pin_name(pin_key) if at else None
+            return ResolvedEnd(decl.name, pin_name or pin_key, ref, pin_name is not None or at is None)
     if inst is None:
         # A boundary pin name containing no dot cannot reach here; treat as unresolved.
         return ResolvedEnd(node_key, pin_key, ref, False)

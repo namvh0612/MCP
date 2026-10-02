@@ -19,7 +19,7 @@ class Config:
     transport: str = "stdio"
     http_host: str = "127.0.0.1"
     http_port: int = 8765
-    allow_write: bool = False  # write tools arrive in M2
+    allow_write: bool = False  # write tools refuse to touch disk unless this is set
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> "Config":
@@ -40,6 +40,8 @@ class Config:
             if bind and ":" in bind:
                 host, port = bind.rsplit(":", 1)
                 cfg.http_host, cfg.http_port = host, int(port)
+        if os.environ.get("EAE_MCP_ALLOW_WRITE"):
+            cfg.allow_write = os.environ["EAE_MCP_ALLOW_WRITE"].lower() in ("1", "true", "yes")
         if os.environ.get("EAE_MCP_ROOTS"):
             cfg.roots = [Path(p) for p in os.environ["EAE_MCP_ROOTS"].split(os.pathsep) if p]
         if os.environ.get("EAE_MCP_LIBRARY_STORE"):

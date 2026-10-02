@@ -191,3 +191,55 @@ def roundtrips(path: str | Path) -> bool:
     except EmptyXmlError:
         return True
     return dumps(xf) == xf.original
+
+
+# -- building and editing ----------------------------------------------------------
+
+EAE_DECLARATION = b'<?xml version="1.0" encoding="utf-8"?>'
+
+
+def new_document(root: etree._Element, doctype: str | None = None, bom: bool = False,
+                 path: Path | None = None) -> XmlFile:
+    """Wrap a freshly built tree so `dumps` writes it in EAE style (CRLF, 2 spaces, ` />`)."""
+    etree.indent(root, space="  ")
+    prolog = EAE_DECLARATION + b"\r\n"
+    if doctype:
+        prolog += doctype.encode() + b"\r\n"
+    return XmlFile(path=path, root=root, bom=bom, newline="\r\n", prolog=prolog, epilog=b"")
+
+
+def _depth(el: etree._Element) -> int:
+    return sum(1 for _ in el.iterancestors())
+
+
+def insert_child(parent: etree._Element, new: etree._Element, index: int | None = None,
+                 indent: str = "  ") -> etree._Element:
+    """Insert `new` into `parent` keeping the surrounding indentation consistent."""
+    depth = _depth(parent)
+    child_ws = "\n" + indent * (depth + 1)
+    close_ws = "\n" + indent * depth
+    etree.indent(new, space=indent, level=depth + 1)
+    if len(parent) == 0:
+        parent.text = child_ws
+        new.tail = close_ws
+        parent.append(new)
+    elif index is None or index >= len(parent):
+        last = parent[-1]
+        new.tail = last.tail if last.tail and not last.tail.strip() else close_ws
+        last.tail = child_ws
+        parent.append(new)
+    else:
+        parent.insert(index, new)
+        new.tail = child_ws
+    return new
+
+
+def remove_child(el: etree._Element) -> None:
+    """Remove `el`, giving its tail whitespace to the previous sibling when it was last."""
+    parent = el.getparent()
+    prev = el.getprevious()
+    if el.getnext() is None and prev is not None:
+        prev.tail = el.tail
+    elif el.getnext() is None and prev is None:
+        parent.text = None
+    parent.remove(el)
