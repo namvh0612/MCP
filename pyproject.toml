@@ -1,7 +1,7 @@
 [project]
 name = "eae-mcp"
-version = "0.1.0"
-description = "MCP server for reading and explaining EcoStruxure Automation Expert (EAE) 26 solutions"
+version = "0.5.0"
+description = "MCP server to read, explain and edit EcoStruxure Automation Expert (EAE) 26 solutions: types, networks, CATs, .NET HMI and eHMI"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

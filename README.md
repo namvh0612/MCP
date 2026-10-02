@@ -1,12 +1,14 @@
 # eae-mcp
 
-An MCP server for understanding **EcoStruxure Automation Expert (EAE) 26** solutions: Adapters, DataTypes,
+An MCP server for understanding and editing **EcoStruxure Automation Expert (EAE) 26** solutions: Adapters, DataTypes,
 Basic/Composite FBs, SubApps, Functions, CATs, the System (applications, devices, resources, mapping),
 .NET HMI and eHMI.
 
 It indexes a solution's files directly (no EAE API is needed), resolves EAE's ID-based references to names,
-explains how the pieces fit together (M1), and creates/edits Adapters, DataTypes and Basic FBs exactly the way
-EAE writes them (M2), and edits networks and resource mapping (M3).
+explains how the pieces fit together (M1), and creates/edits Adapters, DataTypes and Basic FBs (M2), networks and
+resource mapping (M3), CATs, OPC UA exposure and eHMI canvases (M4) and .NET HMI canvases (M5) exactly the way
+EAE writes them. Version history: [CHANGELOG.md](CHANGELOG.md). Acceptance test in EAE:
+[docs/ACCEPTANCE_M5.md](docs/ACCEPTANCE_M5.md).
 
 ## Install (Windows, next to EAE)
 

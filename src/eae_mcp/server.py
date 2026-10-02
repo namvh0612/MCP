@@ -1,4 +1,4 @@
-"""MCP server exposing read-only understanding of EcoStruxure Automation Expert 26 solutions."""
+"""MCP server for EcoStruxure Automation Expert 26 solutions: read tools, resources and prompts."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from . import safety, services
+from . import __version__, safety, services
 from .config import Config
 
 INSTRUCTIONS = """\
@@ -37,7 +37,7 @@ def _json(data: Any) -> str:
 
 def create_server(config: Config | None = None) -> MCPServer:
     ws = services.Workspace(config or Config.load())
-    mcp = MCPServer(name="eae-mcp", instructions=INSTRUCTIONS, version="0.1.0")
+    mcp = MCPServer(name="eae-mcp", instructions=INSTRUCTIONS, version=__version__)
 
     def run(fn, *args, **kwargs):
         try:
