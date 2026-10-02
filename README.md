@@ -83,6 +83,10 @@ interfaces of the system-library types the solution uses. Copy the solution and 
 | `eae_doc_scaffold` | Markdown doc skeleton with screenshot placeholders |
 | `eae_catalog_build` | Index system-library types from the library store |
 | `eae_validate` | Static checks: identifiers, reserved words, WITH, ECC, connections, registration |
+| `eae_library_guide` | Ranked drill-down of libraries: folders → type families → signatures, usage counts |
+| `eae_generic_fbs` | Generic FB types (VALFORMAT_…, PERSISTENCE_…): parameters and pins learned from the solution |
+| `eae_knowledge` | Search the built-in knowledge and return only the matching sections |
+| `eae_hmi_review` | Situation-awareness / High Performance HMI review of canvases, navigation and alarm classes |
 
 ### Write tools (M2–M5)
 
@@ -94,6 +98,7 @@ this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRI
 | `eae_adapter_create` | New Adapter (`.adp` + `.doc.xml`, registered in `.dfbproj`, optional folder) |
 | `eae_datatype_create`, `eae_datatype_update` | New/changed DataType: struct, enum, array, subrange |
 | `eae_basic_create` | New Basic FB: interface, internal vars, ECC, ST algorithms |
+| `eae_function_create`, `eae_function_update` | Helper Functions (POU): inputs/outputs/VAR_IN_OUT, temp vars, ST |
 | `eae_fb_update_interface` | Add/remove events and variables, change WITH; existing IDs and wiring are kept |
 | `eae_basic_upsert_algorithm` | Add or replace an ST algorithm |
 | `eae_basic_update_ecc` | Add/remove states and transitions, replace a state's actions |
@@ -129,8 +134,8 @@ EAE reloads changed files automatically. Do not keep unsaved edits to the same t
 After writing, run **Tools › Check Changes** in EAE.
 
 Resources: `eae://concepts/{overview, adapter, datatype, basic-fb, composite-fb, subapp, function, cat,
-system, hmi-dotnet, ehmi, folders, library}`, `eae://solution/summary`, `eae://type/{name}`.
-Prompts: `learn_component`, `review_application`, `design_basic_fb`, `design_cat`.
+system, hmi-dotnet, ehmi, folders, library, standard-library, hmi-design}`, `eae://solution/summary`, `eae://type/{name}`.
+Prompts: `learn_component`, `review_application`, `design_basic_fb`, `design_cat`, `design_hmi_sa`.
 
 ## Safety
 

@@ -719,3 +719,38 @@ def knowledge_search(query: str, limit: int = 4) -> list[dict]:
                 scored.append((score, path.stem, title, heading, section.strip()))
     scored.sort(key=lambda s: -s[0])
     return [{"concept": c, "doc": t, "section": h, "text": body[:4000]} for _, c, t, h, body in scored[:limit]]
+
+
+def hmi_review(sol: Solution, ws: Workspace, name: str | None = None, technology: str | None = None,
+               level: int | None = None) -> dict:
+    """Situation-awareness / high-performance HMI review of canvases (or one canvas/symbol)."""
+    from .hmi import review as rv
+
+    idx = ws.hmi_of(sol)
+    docs = idx.find(name, technology) if name else [d for d in idx.documents if d.kind == "canvas"
+                                                    and (technology is None or d.technology == technology)]
+    if name and not docs:
+        raise NotFound(f"No HMI document '{name}'. eae_hmi_list shows canvases and symbols.")
+    theme = rv.load_theme(sol)
+    displays = []
+    totals: dict[str, int] = {}
+    for doc in docs:
+        disp = rv.load_display(sol, doc)
+        if disp is None:
+            continue
+        found = rv.review_display(disp, theme, level)
+        for x in found:
+            totals[x.rule] = totals.get(x.rule, 0) + 1
+        displays.append({"display": f"{doc.technology} {doc.kind} {doc.name}", "path": doc.path,
+                         "objects": len(disp.objects), "bound_values": len(disp.bound),
+                         "findings": rv.to_dict(found)})
+    nav = [] if name else rv.review_navigation(sol, technology)
+    classes, alarm_findings = ([], []) if name else rv.review_alarm_classes(sol, theme)
+    for x in nav + alarm_findings:
+        totals[x.rule] = totals.get(x.rule, 0) + 1
+    return {"displays": displays, "navigation": rv.to_dict(nav),
+            "alarm_classes": classes, "alarm_findings": rv.to_dict(alarm_findings), "rule_counts": totals,
+            "manual_checks": rv.MANUAL_CHECKS,
+            "note": "Static review of display files; colors set in code-behind at runtime are not seen. "
+                    "Rules are heuristics from ISA-101, ASM, High Performance HMI and ISA-18.2; a site style "
+                    "guide may override them (eae_knowledge 'hmi design')."}

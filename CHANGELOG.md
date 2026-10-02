@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Library knowledge:** `eae_library_guide` (ranked drill-down), `eae_generic_fbs` (generic FB registry with
+  pins learned from connections; add generic FBs by template + parameters), `eae_knowledge` (section search),
+  knowledge docs `standard-library` (IEC 61499 E_*, EAE runtime blocks, generic templates, path macros) and
+  an expanded `function`. Parser now keeps VAR_IN_OUT and variable type namespaces.
+- **Functions:** `eae_function_create` / `eae_function_update` (identical to EAE 26 output).
+- **HMI design:** knowledge doc `hmi-design` (Endsley SA, ISA-101 hierarchy, High Performance HMI, ISA-18.2),
+  `eae_hmi_review` (HP-01…10, NAV-01…03, ALM-01…05 + manual checks), prompt `design_hmi_sa`.
+
 ## 0.5.0 — 2026-10-02
 
 Write support for every component, pending acceptance in EAE 26 (docs/ACCEPTANCE_M5.md).

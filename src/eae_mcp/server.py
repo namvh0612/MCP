@@ -134,6 +134,16 @@ def create_server(config: Config | None = None) -> MCPServer:
         return run(services.knowledge_search, query, limit)
 
     @mcp.tool(annotations=READ_ONLY)
+    def eae_hmi_review(name: str | None = None, technology: str | None = None, level: int | None = None,
+                       solution: str | None = None) -> dict:
+        """Review HMI displays for situation awareness / high-performance HMI practice (ISA-101, ASM,
+        ISA-18.2): background, static use of saturated and alarm colors, images, fonts, text contrast,
+        density, numbers without analog context, trends, canvas hierarchy and alarm classes.
+        name: one canvas/symbol (default: all canvases); technology: hmi | ehmi; level: ISA-101 display
+        level 1-4 of the reviewed display(s) for density/trend rules. Background: eae_knowledge 'hmi design'."""
+        return run(services.hmi_review, sol(solution), ws, name, technology, level)
+
+    @mcp.tool(annotations=READ_ONLY)
     def eae_search(text: str, limit: int = 50, solution: str | None = None) -> list[dict]:
         """Full-text search over type names, comments, variables and ST algorithm code."""
         return services.search(sol(solution), text, limit)
@@ -294,6 +304,19 @@ def create_server(config: Config | None = None) -> MCPServer:
             "eae_cat_describe). Produce: CAT interface, inner network (Basic FB for logic + IThis HMI "
             "interface), the HMI interface variables and events, and the content of a default .NET "
             "symbol and an eHMI symbol (widgets and their tag bindings)."
+        )
+
+    @mcp.prompt()
+    def design_hmi_sa(area: str, level: int = 2) -> str:
+        """Design or improve an HMI display for situation awareness (ISA-101 / High Performance HMI)."""
+        return (
+            f"Design an EAE HMI display for: {area} (ISA-101 level {level}).\n"
+            "1. Read eae_knowledge 'situation awareness hierarchy' and 'high performance principles'.\n"
+            "2. Find the instances to show (eae_system_describe) and their CATs' symbols (eae_cat_describe).\n"
+            "3. Propose the layout: what supports SA level 1 (abnormal at a glance), 2 (values versus normal "
+            "range, analog indicators) and 3 (trends); which details go to faceplates (level 4).\n"
+            "4. Create/extend canvases and place symbols with the eae_hmi_* / eae_ehmi_* tools (dry run first).\n"
+            "5. Run eae_hmi_review with this level, fix warnings, and list the manual checks still open."
         )
 
     return mcp
