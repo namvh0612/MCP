@@ -26,7 +26,10 @@ namespace NxtControl.GuiFramework {
   public class Shape : System.ComponentModel.Component {
     public NxtControl.Drawing.RectF Bounds { get; set; } public NxtControl.Drawing.Brush Brush { get; set; }
     public NxtControl.Drawing.Pen Pen { get; set; } public NxtControl.Drawing.Font Font { get; set; }
-    public string Name { get; set; } public bool Visible { get; set; } }
+    public string Name { get; set; } public bool Visible { get; set; }
+    public List<OpenFaceplate> OpenFaceplates = new List<OpenFaceplate>(); }
+  public enum MouseButtonType { Click } public enum CloseFaceplateBehavior { Automatic }
+  public class OpenFaceplate { public OpenFaceplate(string name, MouseButtonType b) {} }
   public class Rectangle : Shape {}
   public class Ellipse : Shape {}
   public class Polygon : Shape { public bool Closed { get; set; } public List<NxtControl.Drawing.PointF> Points = new List<NxtControl.Drawing.PointF>(); }
@@ -39,6 +42,9 @@ namespace NxtControl.GuiFramework {
   public class DrawnButton : Shape { public NxtControl.Drawing.Color InnerBorderColor { get; set; } public double Radius { get; set; }
     public string Text { get; set; } public NxtControl.Drawing.Color TextColor { get; set; }
     public NxtControl.Drawing.Color TextColorMouseDown { get; set; } public bool Use3DEffect { get; set; } public event EventHandler Click; }
+  public class HMIFaceplate { public ShapeList Shapes = new ShapeList(); public System.Drawing.Size Size { get; set; }
+    public NxtControl.Drawing.RectF Bounds { get; set; } public NxtControl.Drawing.Brush Brush { get; set; }
+    public CloseFaceplateBehavior FaceplateClose { get; set; } public string Title { get; set; } }
   public class HMISymbol { public ShapeList Shapes = new ShapeList(); public System.Drawing.Size SymbolSize { get; set; } }
 }
 namespace System.HMI.Symbols.Base {

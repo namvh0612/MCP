@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **SA faceplates:** `eae_hmi_faceplate_build` draws a level-4 .NET faceplate from a design (values, states, alarms,
+  setpoints, commands), titled by AssetName, and links it to the CAT's SA symbol (click on the card opens it).
+
 - **Alarm-word profiles:** `eae_hmi_scripts` lists HMI support classes and reads alarm-word profiles
   (`AlarmDefinition[]` arrays), cross-checked with the bits the logic sets (`AlarmWord.N := …`): ALM-06…10 (found in
   SolarPlantDemo: fbOwnLoad bit 5 "Energy measurement invalid" has no text, the Grid profile describes bit 2 that

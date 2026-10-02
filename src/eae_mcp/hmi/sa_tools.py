@@ -24,12 +24,8 @@ def _put(cs: ChangeSet, root, rel: str, data: bytes) -> None:
         cs.changes[rel] = FileChange(rel, old, data)
 
 
-def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technology: str = "both",
-                 symbol: str = "sSA", web_symbol: str = "seSA", overwrite: bool = False,
-                 now: _dt.datetime | None = None) -> ChangeSet:
-    """Create (or with overwrite=True replace) SA symbols of a CAT from a design."""
-    if technology not in ("hmi", "ehmi", "both"):
-        raise EditError("technology must be hmi, ehmi or both.")
+def _prepare(sol: Solution, cat_name: str, design: sb.SymbolDesign, technology: str):
+    """Resolve every element (IThis variable/event or Agile block path), validate the design, collect types."""
     td, cat = _cat_of(sol, cat_name)
     hmi_rel = os.path.normpath(f"{cat.cfg_file.rsplit('/', 2)[0]}/{cat.hmi_interface_file}").replace("\\", "/")
     hmi_td = next((t for t in sol.types.values() if t.path == hmi_rel), None)
@@ -62,6 +58,16 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
     types.update(out_vars)
     hmi_outputs = {ev.name: [(w, out_vars.get(w, "")) for w in ev.with_vars] for ev in hitf.event_outputs}
     types.update({var: sb.PSEUDO_IEC[br.val_type] for var, br in bridges.items()})
+    return td, cat, hmi_td, bridges, warnings, types, hmi_outputs, ithis
+
+
+def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technology: str = "both",
+                 symbol: str = "sSA", web_symbol: str = "seSA", overwrite: bool = False,
+                 now: _dt.datetime | None = None, open_faceplate: str | None = None) -> ChangeSet:
+    """Create (or with overwrite=True replace) SA symbols of a CAT from a design."""
+    if technology not in ("hmi", "ehmi", "both"):
+        raise EditError("technology must be hmi, ehmi or both.")
+    td, cat, hmi_td, bridges, warnings, types, hmi_outputs, ithis = _prepare(sol, cat_name, design, technology)
     boxes, W, H = sb.layout(design, bridges)
     signal_vars = [e.var for e in design.elements if e.var in ithis and e.var != "AssetName"]
     if bridges and signal_vars:
@@ -84,7 +90,10 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
             add_symbol(sol, n, symbol, "hmi", now=now, cs=cs)
         base = f"{parent}HMI/{n}/{n}_{symbol}"
         sym_ns = f"{cg.ns_root(ns)}.Symbols.{n}"
-        designer = sb.dotnet_designer(header, sym_ns, symbol, boxes, types, W, H, bridges)
+        if open_faceplate is None:
+            open_faceplate = next((s.name for s in cat.symbols if s.is_faceplate and s.name == "fSA"), None)
+        designer = sb.dotnet_designer(header, sym_ns, symbol, boxes, types, W, H, bridges,
+                                      open_faceplate=open_faceplate)
         gate_issues += sb.gate("hmi", symbol, designer, None)
         _put(cs, sol.root, f"{base}.cnv.Designer.cs", designer.encode("utf-8"))
         _put(cs, sol.root, f"{base}.cnv.cs", sb.dotnet_code_behind(header, sym_ns, symbol, boxes, types,
@@ -111,6 +120,60 @@ def build_symbol(sol: Solution, cat_name: str, design: sb.SymbolDesign, technolo
     cs.commit_docs()
     cs.warnings += warnings + [f"info: symbol size {W}x{H}; colors are gray until a value is abnormal or an alarm "
                                "is active (set at runtime by the generated code)."]
+    return cs
+
+
+def build_faceplate(sol: Solution, cat_name: str, design: sb.SymbolDesign, faceplate: str = "fSA",
+                    symbol: str | None = "sSA", overwrite: bool = False,
+                    now: _dt.datetime | None = None) -> ChangeSet:
+    """Level-4 (ISA-101 detail) faceplate of a CAT drawn from a design (.NET HMI), opened by a click on the
+    CAT's SA symbol `symbol` when it exists. Window title = AssetName when IThis has it (as SE.Agile faceplates)."""
+    td, cat, hmi_td, bridges, warnings, types, hmi_outputs, ithis = _prepare(sol, cat_name, design, "hmi")
+    boxes, W, H = sb.layout(design, bridges)
+    if "AssetName" in ithis and not any(b.var == "AssetName" and b.kind == "exec" for b in boxes):
+        boxes.append(sb.Box("xAssetName", "exec", 0, 0, 0, 0, var="AssetName"))
+    now = now or _dt.datetime.now()
+    header = cg.header(now)
+    proj_dir = cat.cfg_file.rsplit("/", 2)[0]
+    parent = proj_dir.rsplit("/", 1)[0] + "/" if "/" in proj_dir else ""
+    n, ns = td.name, td.namespace or "Main"
+    w.check_identifier(faceplate, "faceplate name")
+    cs = ChangeSet(sol.root, f"build SA faceplate {faceplate} for CAT {n}")
+    existing = {s.name: s for s in cat.symbols}
+    if faceplate in existing and not (overwrite and existing[faceplate].is_faceplate):
+        raise EditError(f"CAT {n} already has a symbol '{faceplate}'"
+                        + ("; pass overwrite=true to regenerate it." if existing[faceplate].is_faceplate else "."))
+    if faceplate not in existing:
+        add_symbol(sol, n, faceplate, "hmi", faceplate=True, now=now, cs=cs)
+    base = f"{parent}HMI/{n}/{n}_{faceplate}"
+    fp_ns = f"{cg.ns_root(ns)}.Faceplates.{n}"
+    designer = sb.dotnet_designer(header, fp_ns, faceplate, boxes, types, W, H, bridges, faceplate=True)
+    issues = sb.gate("hmi", faceplate, designer, None)
+    if issues:
+        raise EditError("Generated faceplate fails the HMI review (please report): " + json.dumps(issues, default=str)[:800])
+    _put(cs, sol.root, f"{base}.cnv.Designer.cs", designer.encode("utf-8"))
+    _put(cs, sol.root, f"{base}.cnv.cs", sb.dotnet_code_behind(header, fp_ns, faceplate, boxes, types, bridges,
+                                                             hmi_outputs, faceplate=True).encode("utf-8"))
+    _put(cs, sol.root, f"{base}.cnv.resx", sb.dotnet_resx(w.template("cat/cnv.resx"), boxes, W, H))
+    linked = False
+    if symbol and symbol in existing and not existing[symbol].is_faceplate:
+        rel = f"{parent}HMI/{n}/{n}_{symbol}.cnv.Designer.cs"
+        text = (sol.root / rel).read_bytes().decode("utf-8-sig") if (sol.root / rel).exists() else ""
+        if text and "this.card." in text and f'OpenFaceplate("{faceplate}"' not in text:
+            d = ds.parse(text)
+            sec = next(s for s in d.sections if s.name == "card")
+            at = next(i for i, ln in enumerate(sec.lines) if ".Pen = " in ln)
+            sec.lines.insert(at, f'\t\t\tthis.card.OpenFaceplates.Add(new NxtControl.GuiFramework.OpenFaceplate('
+                                 f'"{faceplate}", NxtControl.GuiFramework.MouseButtonType.Click));')
+            _put(cs, sol.root, rel, b"\xef\xbb\xbf" + ds.dumps(d).encode("utf-8") if (sol.root / rel).read_bytes()
+                 .startswith(b"\xef\xbb\xbf") else ds.dumps(d).encode("utf-8"))
+            linked = True
+        elif f'OpenFaceplate("{faceplate}"' in text:
+            linked = True
+    cs.commit_docs()
+    cs.warnings += [w_ for w_ in warnings if "eHMI" not in w_]
+    cs.warnings.append(f"info: faceplate {W}x{H}; " + (f"a click on {symbol} opens it." if linked else
+                       f"open it from a symbol (OpenFaceplates) — no generated symbol '{symbol}' to link."))
     return cs
 
 

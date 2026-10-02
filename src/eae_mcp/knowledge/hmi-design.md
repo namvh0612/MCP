@@ -127,8 +127,14 @@ asks before sending (ISA-101: confirm actions with significant consequences). Co
 HMI only — the samples show no verified eHMI write API (even SE.Agile's `seValControl` probes several); draw eHMI
 commands in EAE.
 
-Not generated yet (do in EAE, then re-run `eae_hmi_review`): embedded trends (TrendControl pens) and faceplates
-(level 4).
+Level 4 (detail) faceplates: `eae_hmi_faceplate_build` draws a .NET faceplate (`fSA`, namespace
+`<Root>.Faceplates.<Cat>`, `HMIFaceplate` with `FaceplateBrush` background and `FaceplateClose = Automatic`, window
+title from `AssetName`, as the SE.Agile faceplates) from the same element list; a click on the generated symbol
+card opens it (`card.OpenFaceplates.Add(new OpenFaceplate("fSA", MouseButtonType.Click))`, as SolarPlantDemo
+`sDefault`). Keep the symbol to what level 1–2 needs; put limits, setpoints and commands on the faceplate.
+
+Not generated yet (do in EAE, then re-run `eae_hmi_review`): embedded trends (TrendControl pens) and eHMI
+faceplates.
 
 ## Two HMI styles in EAE: basic and Agile
 

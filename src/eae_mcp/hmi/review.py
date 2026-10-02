@@ -139,6 +139,9 @@ def load_theme(sol: Solution) -> dict[str, tuple[int, int, int]]:
     # Built-in EAE tokens that themes usually do not redefine.
     out.setdefault("CanvasBackColor", (230, 230, 230))
     out.setdefault("CanvasBrush", out["CanvasBackColor"])
+    # EAE defaults (Definitions.ts of a built WEB project): FaceplateBrush = FaceplateBackColor = 230 gray.
+    out.setdefault("FaceplateBackColor", (230, 230, 230))
+    out.setdefault("FaceplateBrush", out["FaceplateBackColor"])
     return out
 
 

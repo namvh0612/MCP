@@ -468,6 +468,19 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
                                                                 overwrite), dry_run)
 
     @mcp.tool(annotations=CREATE)
+    def eae_hmi_faceplate_build(cat: str, title: str, elements: list[HmiElementSpec], width: int = 360,
+                                faceplate: str = "fSA", symbol: str | None = "sSA", overwrite: bool = False,
+                                dry_run: bool = True, solution: str | None = None) -> dict:
+        """Draw a level-4 (ISA-101 detail) .NET faceplate for a CAT from a design with the same elements as
+        eae_hmi_symbol_build (values with normal band/limits, states, alarms, setpoints, commands) — put the
+        detail and the operator actions here and keep the symbol small. The faceplate window title follows
+        AssetName when IThis has it; a click on the CAT's generated symbol `symbol` opens it (OpenFaceplates).
+        eHMI faceplates are not generated (no sample to learn the format from)."""
+        design = sa_builder.SymbolDesign(title, [e.to_model() for e in elements], width)
+        return change(solution, lambda s: sa_tools.build_faceplate(s, cat, design, faceplate, symbol, overwrite),
+                      dry_run)
+
+    @mcp.tool(annotations=CREATE)
     def eae_hmi_display_build(canvas: str, title: str, sections: list[HmiSectionSpec], level: int = 2,
                               technology: Literal["hmi", "ehmi"] = "hmi", device: str | None = None,
                               symbol: str | None = None, replace: bool = False, dry_run: bool = True,

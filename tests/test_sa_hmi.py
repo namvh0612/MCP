@@ -334,3 +334,52 @@ def test_agile_commands(solar_dir, tmp_path):
         out = subprocess.run(["tsc", "--noEmit", "--experimentalDecorators", "--target", "es2017", "--strict", "false",
                               "--noImplicitAny", "true", str(stub), str(ts)], capture_output=True, text=True)
         assert out.returncode == 0, out.stdout + out.stderr
+
+
+def test_faceplate_build_and_link(solar_dir, tmp_path):
+    from eae_mcp.project import agile_edit as ag
+    root = tmp_path / "s"
+    shutil.copytree(solar_dir, root)
+    sigs = [ag.AgileSignal("FLOW", "indication", "real", 0, 120, "m3/h", 1),
+            ag.AgileSignal("RUN", "indication", "bool"),
+            ag.AgileSignal("SP", "control", "real", 0, 120, "m3/h", 1, default="50.0")]
+    ag.create_agile_cat(load_solution(root), "acPump_v1_0", sigs).apply()
+    sa_tools.build_symbol(load_solution(root), "acPump_v1_0", sb.SymbolDesign("P-101", [
+        sb.ElementSpec("value", "FLOW", range=(0, 120), unit="m3/h"),
+        sb.ElementSpec("state", "RUN", states={"true": "Running", "false": "Stopped"})]), technology="both").apply()
+    detail = sb.SymbolDesign("P-101 detail", [
+        sb.ElementSpec("value", "FLOW", range=(0, 120), unit="m3/h", normal=(40, 90), limits=(20, 105)),
+        sb.ElementSpec("state", "RUN", states={"true": "Running", "false": "Stopped"}),
+        sb.ElementSpec("setpoint", "SP", label="Flow SP", step=5, confirm=True)], width=360)
+    cs = sa_tools.build_faceplate(load_solution(root), "acPump_v1_0", detail)
+    assert any("click on sSA opens it" in x for x in cs.warnings)
+    cs.apply()
+    sol = load_solution(root)
+    fp = next(s for s in sol.cats["Main.acPump_v1_0"].symbols if s.name == "fSA")
+    assert fp.is_faceplate
+    base = root / "HMI/acPump_v1_0/acPump_v1_0_fSA.cnv"
+    designer = Path(f"{base}.Designer.cs").read_bytes().decode("utf-8-sig")
+    assert "namespace HMI.Main.Faceplates.acPump_v1_0" in designer and 'this.Brush = new NxtControl.Drawing.Brush("FaceplateBrush");' in designer
+    assert "this.Size = new System.Drawing.Size(360," in designer and "SymbolSize" not in designer
+    code = Path(f"{base}.cs").read_text()
+    assert ": NxtControl.GuiFramework.HMIFaceplate" in code and "Title = raw == null" in code
+    sym = (root / "HMI/acPump_v1_0/acPump_v1_0_sSA.cnv.Designer.cs").read_bytes().decode("utf-8-sig")
+    assert 'this.card.OpenFaceplates.Add(new NxtControl.GuiFramework.OpenFaceplate("fSA", ' in sym
+    ds.parse(sym)
+    def_cs = (root / "HMI/acPump_v1_0/acPump_v1_0.def.cs").read_text()
+    assert "Faceplates.acPump_v1_0.fSA" in def_cs
+    ws = services.Workspace(Config(roots=[]))
+    r = services.hmi_review(ws.open(str(root)), ws, name="acPump_v1_0.fSA")
+    assert r["displays"][0]["findings"] == []
+    with pytest.raises(EditError, match="overwrite"):
+        sa_tools.build_faceplate(load_solution(root), "acPump_v1_0", detail)
+    sa_tools.build_faceplate(load_solution(root), "acPump_v1_0", detail, overwrite=True)  # regenerate in place
+    if shutil.which("mcs"):
+        stubs = tmp_path / "bridges.cs"
+        stubs.write_text(_bridge_stubs(sol, "acPump_v1_0", detail))
+        out = subprocess.run(["mcs", "-target:library", "-nowarn:67,169,414,649,162,219", f"-out:{tmp_path / 'f.dll'}",
+                              str(HERE / "stubs/eae_stubs.cs"), str(stubs), f"{base}.Designer.cs", f"{base}.cs",
+                              str(root / "HMI/acPump_v1_0/acPump_v1_0_sSA.cnv.Designer.cs"),
+                              str(root / "HMI/acPump_v1_0/acPump_v1_0_sSA.cnv.cs")],
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stdout + out.stderr

@@ -120,6 +120,7 @@ this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRI
 | `eae_opcua_expose` | Expose/unexpose a variable on OPC UA (application layer and mapped resources) |
 | `eae_ehmi_canvas_create` | New eHMI canvas on a device, added to its canvas resolution |
 | `eae_ehmi_place_symbol`, `eae_ehmi_update_object`, `eae_ehmi_remove_object` | Put a CAT instance on an eHMI canvas, move/resize/edit it, remove it |
+| `eae_hmi_faceplate_build` | Draw a level-4 SA faceplate (.NET) for a CAT and open it from the CAT's SA symbol |
 | `eae_hmi_symbol_build` | Draw a situation-awareness CAT symbol (.NET + eHMI), basic (IThis) or Agile (HMI block paths): values with analog indicators, states, alarm indicators |
 | `eae_hmi_display_build` | Lay out an ISA-101 display: canvas, title, framed sections, CAT symbols in a grid |
 | `eae_hmi_canvas_create` | New .NET HMI canvas, registered and added to a canvas resolution |
