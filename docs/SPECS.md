@@ -338,7 +338,7 @@ A fixture-trimming script (`scripts/make_fixture.py`) performs this removal so i
 | **M0** | Finalize specs. User runs checklist C0–C11 in EAE and sends zips and screenshots | Golden files exist for Adapter, DataType, Basic, Composite, SubApp, CAT, .NET HMI symbol/canvas, eHMI symbol/canvas |
 | **M1** ✅ (2026-10-02) | Server skeleton, config, safety, lossless round-trip, solution index, catalog, resolver, read-only tools (§5.1, read parts of §5.7–5.10), knowledge layer (§4) | Claude can read and explain every component of SolarPlantDemo, including both HMIs |
 | **M2** ✅ (2026-10-02, pending EAE acceptance) | Write Adapter, DataType, Basic FB; `eae_validate` | Created files build in EAE |
-| **M3** | Networks (Composite/SubApp/Layer) and resource mapping | Same |
+| **M3** ✅ (2026-10-02, pending EAE acceptance) | Networks (Composite/SubApp/Layer) and resource mapping | Same |
 | **M4** | CAT (create, sub-CAT, OPC UA) + eHMI write (symbol, canvas) | A new CAT renders on an eHMI canvas |
 | **M5** | .NET HMI write (symbol, faceplate, canvas) | A new CAT renders on an HMI canvas |
 | **M6** | OPC UA runtime, Buildtime automation investigation, 26.1 support | — |

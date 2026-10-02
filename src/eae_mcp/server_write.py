@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from . import services
 from .model import Algorithm, DataTypeDef, ECAction, ECState, ECTransition, EnumValue, Event, Interface, Var
-from .project import edit
+from .project import edit, network_edit
 
 CREATE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 MODIFY = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
@@ -203,6 +203,94 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
             [t.to_model() for t in add_transitions or []], [t.to_model() for t in remove_transitions or []],
             actions)
         return change(solution, build, dry_run)
+
+    # -- M3: networks ---------------------------------------------------------------------------
+
+    @mcp.tool(annotations=CREATE)
+    def eae_composite_create(name: str, event_inputs: list[EventSpec] | None = None,
+                             event_outputs: list[EventSpec] | None = None, input_vars: list[VarSpec] | None = None,
+                             output_vars: list[VarSpec] | None = None, comment: str | None = None,
+                             folder: str | None = None, library: str | None = None, dry_run: bool = True,
+                             solution: str | None = None) -> dict:
+        """Create a Composite FB with its interface and an empty network (boundary pins included).
+        Then fill it with eae_net_add_fb / eae_net_connect using network=<name>."""
+        itf = _interface(event_inputs, event_outputs, input_vars, output_vars)
+        return change(solution, lambda s: network_edit.create_composite(s, name, itf, comment, folder, library),
+                      dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_subapp_create(name: str, application: str = "APP1", instance: str | None = None,
+                          event_inputs: list[EventSpec] | None = None, event_outputs: list[EventSpec] | None = None,
+                          dry_run: bool = True, solution: str | None = None) -> dict:
+        """Create a SubApp inside an application (packaging of application content, not a reusable
+        type). EAE stores its content in IEC61499/<name>/<name>.app; the application gets an instance
+        (default name: NAME in upper case). Fill it with eae_net_* using network=<name>.
+        Event pins only (data pins are not supported yet)."""
+        itf = _interface(event_inputs, event_outputs, None, None)
+        return change(solution, lambda s: network_edit.create_subapp(s, name, application, instance, itf), dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_net_add_fb(network: str, name: str, type: str, namespace: str | None = None,
+                       parameters: dict[str, str] | None = None, x: float | None = None, y: float | None = None,
+                       dry_run: bool = True, solution: str | None = None) -> dict:
+        """Add an FB/CAT instance to a network. type: solution type or system-library type
+        (e.g. E_DELAY; run eae_catalog_build first). parameters: {input var: ST literal},
+        e.g. {"DT": "T#1s", "Name": "'Pump1'"}. Position is chosen automatically unless x/y given.
+        network: a Composite/CAT/SubApp type name, or an application ('APP1' or 'APP1/Layer').
+        """
+        return change(solution, lambda s: network_edit.add_fb(s, network, name, type, namespace, parameters, x, y),
+                      dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_net_remove_fb(network: str, name: str, force: bool = False, dry_run: bool = True,
+                          solution: str | None = None) -> dict:
+        """Remove an instance and all its connections. In an application this also removes its
+        mapped resource copy; refused while it is shown on an HMI/eHMI canvas (unless force=true).
+        network: a Composite/CAT/SubApp type, an application ('APP1', 'APP1/Layer') or a resource
+        ('EcoRT_0/RES0')."""
+        return change(solution, lambda s: network_edit.remove_fb(s, network, name, force), dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_net_connect(network: str, source: str, destination: str, replace: bool = False,
+                        dry_run: bool = True, solution: str | None = None) -> dict:
+        """Connect two pins: 'Instance.Pin' or a boundary pin name of the enclosing type ('REQ').
+        Kind (event/data/adapter) is inferred; direction is checked (reversed order is accepted).
+        A data input accepts one source (replace=true replaces it). In an application, the
+        connection is also copied into a resource when both FBs are mapped to it.
+        network: a Composite/CAT/SubApp type, an application ('APP1', 'APP1/Layer') or a resource
+        ('EcoRT_0/RES0')."""
+        return change(solution, lambda s: network_edit.connect(s, network, source, destination, replace), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_net_disconnect(network: str, source: str, destination: str, dry_run: bool = True,
+                           solution: str | None = None) -> dict:
+        """Remove a connection (and its resource copy for application networks).
+        network: a Composite/CAT/SubApp type, an application ('APP1', 'APP1/Layer') or a resource
+        ('EcoRT_0/RES0')."""
+        return change(solution, lambda s: network_edit.disconnect(s, network, source, destination), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_net_set_param(network: str, instance: str, var: str, value: str | None, dry_run: bool = True,
+                          solution: str | None = None) -> dict:
+        """Set (or clear with value=null) a parameter on an instance input. Values are ST literals:
+        5, TRUE, T#1s, 'text'. Application parameters are synced to the mapped resource copy.
+        network: a Composite/CAT/SubApp type, an application ('APP1', 'APP1/Layer') or a resource
+        ('EcoRT_0/RES0')."""
+        return change(solution, lambda s: network_edit.set_param(s, network, instance, var, value), dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_map_to_resource(instance: str, resource: str, application: str | None = None, dry_run: bool = True,
+                            solution: str | None = None) -> dict:
+        """Map an application instance to a resource ('EcoRT_0/RES0'): creates the resource copy
+        (new ID, Mapping=<application FB ID>, same parameters) and copies connections to FBs already
+        mapped to the same resource. Cross-resource communication is not generated."""
+        return change(solution, lambda s: network_edit.map_to_resource(s, instance, resource, application), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_unmap(instance: str, application: str | None = None, dry_run: bool = True,
+                  solution: str | None = None) -> dict:
+        """Remove an application instance's resource copy (and its resource connections)."""
+        return change(solution, lambda s: network_edit.unmap(s, instance, application), dry_run)
 
     @mcp.tool(annotations=READ_ONLY)
     def eae_validate(name: str | None = None, solution: str | None = None) -> dict:

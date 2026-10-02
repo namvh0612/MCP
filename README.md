@@ -6,7 +6,7 @@ Basic/Composite FBs, SubApps, Functions, CATs, the System (applications, devices
 
 It indexes a solution's files directly (no EAE API is needed), resolves EAE's ID-based references to names,
 explains how the pieces fit together (M1), and creates/edits Adapters, DataTypes and Basic FBs exactly the way
-EAE writes them (M2).
+EAE writes them (M2), and edits networks and resource mapping (M3).
 
 ## Install (Windows, next to EAE)
 
@@ -95,6 +95,12 @@ this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRI
 | `eae_fb_update_interface` | Add/remove events and variables, change WITH; existing IDs and wiring are kept |
 | `eae_basic_upsert_algorithm` | Add or replace an ST algorithm |
 | `eae_basic_update_ecc` | Add/remove states and transitions, replace a state's actions |
+| `eae_composite_create` | New Composite FB (interface + boundary pins), filled with the `eae_net_*` tools |
+| `eae_subapp_create` | New SubApp inside an application (event pins) |
+| `eae_net_add_fb`, `eae_net_remove_fb` | Add/remove instances in a Composite, CAT, SubApp or application |
+| `eae_net_connect`, `eae_net_disconnect` | Event/data/adapter connections, with direction and single-source checks |
+| `eae_net_set_param` | Instance parameters (ST literals), synced to the mapped resource copy |
+| `eae_map_to_resource`, `eae_unmap` | Map application instances to `Device/Resource`, copying shared connections |
 
 Every write:
 - backs up modified files to `<solution>/.eae-mcp/backup/<timestamp>/`;

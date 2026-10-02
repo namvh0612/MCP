@@ -67,6 +67,22 @@ def _register(cs: ChangeSet, t: Target, kind: str, file_include: str, companions
         w.add_project_item(proj, "None", inc, [("DependentUpon", dependent)])
 
 
+def _register_files(cs: ChangeSet, t: Target, iec_type: str, file_include: str,
+                    companions: list[tuple[str, list[tuple[str, str]]]], folder: str | None,
+                    category: str) -> None:
+    """Register a type file (Compile) and its companions (None, DependentUpon + extra metadata)."""
+    proj = cs.doc(t.dfbproj)
+    meta = [("IEC61499Type", iec_type)]
+    if folder:
+        meta.append(("Parent", folder))
+        if (cs.root / t.folders_xml).exists():
+            w.ensure_folder(cs.doc(t.folders_xml), category, folder)
+    w.add_project_item(proj, "Compile", file_include, meta)
+    dependent = file_include.replace("\\", "/").rsplit("/", 1)[-1]
+    for inc, extra in companions:
+        w.add_project_item(proj, "None", inc, [("DependentUpon", dependent)] + list(extra))
+
+
 def _finish(cs: ChangeSet, sol: Solution, rel: str) -> ChangeSet:
     cs.commit_docs()
     # Parse what we are about to write, so broken output never reaches the disk.

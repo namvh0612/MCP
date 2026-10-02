@@ -21,11 +21,14 @@ async def test_tools_listed_and_read_only(golden_dir):
         names = {t.name for t in tools}
         assert {"eae_open_solution", "eae_explain", "eae_trace", "eae_cat_describe", "eae_hmi_describe"} <= names
         writers = {"eae_catalog_build", "eae_doc_scaffold", "eae_adapter_create", "eae_datatype_create", "eae_datatype_update",
-                   "eae_basic_create", "eae_fb_update_interface", "eae_basic_upsert_algorithm", "eae_basic_update_ecc"}
+                   "eae_basic_create", "eae_fb_update_interface", "eae_basic_upsert_algorithm", "eae_basic_update_ecc",
+                   "eae_composite_create", "eae_subapp_create", "eae_net_add_fb", "eae_net_remove_fb",
+                   "eae_net_connect", "eae_net_disconnect", "eae_net_set_param", "eae_map_to_resource", "eae_unmap"}
         assert {t.name for t in tools if not t.annotations.read_only_hint} == writers
         modifying = {t.name for t in tools if t.annotations.destructive_hint}
         assert modifying == {"eae_datatype_update", "eae_fb_update_interface", "eae_basic_upsert_algorithm",
-                             "eae_basic_update_ecc"}
+                             "eae_basic_update_ecc", "eae_net_remove_fb", "eae_net_disconnect", "eae_net_set_param",
+                             "eae_unmap"}
 
 
 async def test_open_and_explain_over_mcp(golden_dir):

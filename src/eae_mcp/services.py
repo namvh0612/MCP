@@ -656,6 +656,7 @@ def run_change(ws: Workspace, sol: Solution, build, dry_run: bool) -> dict:
     from .project.edit import EditError
     from .project.writer import SpecError
 
+
     try:
         cs = build()
     except (EditError, SpecError, FileExistsError) as e:
