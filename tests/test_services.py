@@ -146,3 +146,15 @@ def test_doc_scaffold_is_saved_outside_the_project(golden_dir, tmp_path):
     out = services.doc_scaffold_saved(sol, ws, "fbTest")
     assert out["saved_to"].endswith(".eae-mcp/docs/fbTest.md".replace("/", __import__("os").sep))
     assert out["markdown"].startswith("# fbTest")
+
+
+def test_solution_by_name_and_clear_roots_error(golden_dir, tmp_path):
+    import shutil
+    root = tmp_path / "EAE"
+    shutil.copytree(golden_dir, root / "EAE_MCP_Golden")
+    ws = services.Workspace(Config(roots=[root]))
+    assert ws.get("EAE_MCP_Golden").sln.stem == "EAE_MCP_Golden"
+    with pytest.raises(services.NotFound, match="eae_list_solutions"):
+        ws.get("Nope")
+    with pytest.raises(safety.AccessDenied, match=str(root).replace("\\", "\\\\")):
+        ws.get(str(golden_dir))

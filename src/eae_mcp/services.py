@@ -53,10 +53,24 @@ class Workspace:
         return sol
 
     def get(self, solution: str | None = None) -> Solution:
+        """Current solution, or the one named by an open key, .sln/folder name, or path."""
         if solution:
             for key, sol in self.solutions.items():
-                if key == solution or sol.sln.name == solution or sol.root.name == solution:
+                if solution in (key, sol.sln.name, sol.sln.stem, sol.root.name):
                     return sol
+            if not Path(solution).expanduser().exists() or not Path(solution).is_absolute():
+                # A bare name such as 'EAE_MCP_Golden': look it up under the configured roots.
+                matches = [s for s in list_solutions(self) if s["name"] == solution
+                           or Path(s["path"]).name == solution]
+                if len(matches) == 1:
+                    return self.open(matches[0]["path"])
+                if len(matches) > 1:
+                    raise NotFound(f"Several solutions are named '{solution}': "
+                                   + ", ".join(m["path"] for m in matches) + ". Pass the full path.")
+                if not Path(solution).expanduser().exists():
+                    raise NotFound(f"No solution '{solution}' under the configured roots "
+                                   f"({', '.join(str(r) for r in self.config.roots) or 'none'}). "
+                                   "Use eae_list_solutions.")
             return self.open(solution)
         if self.current:
             return self.solutions[self.current]

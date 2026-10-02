@@ -36,7 +36,11 @@ def check_inside(path: Path, roots: list[Path]) -> Path:
     """Resolve `path` and require it to be inside one of `roots` (if any are configured)."""
     resolved = path.expanduser().resolve()
     if roots and not any(resolved == r or r in resolved.parents for r in (x.resolve() for x in roots)):
-        raise AccessDenied(f"{resolved} is outside the configured project roots")
+        allowed = ", ".join(str(r) for r in roots)
+        raise AccessDenied(
+            f"{resolved} is outside the configured project roots ({allowed}). Open a solution under these "
+            "roots (eae_list_solutions shows them), or add the folder to [project] roots in eae-mcp.toml "
+            "and restart the server.")
     return resolved
 
 

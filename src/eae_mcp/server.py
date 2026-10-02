@@ -15,6 +15,8 @@ from .config import Config
 INSTRUCTIONS = """\
 Tools for understanding EcoStruxure Automation Expert (EAE) 26 solutions (IEC 61499).
 Start with eae_list_solutions / eae_open_solution, then eae_summary.
+Every tool takes an optional `solution`: the solution name (e.g. 'EAE_MCP_Golden') or its folder path.
+Only solutions under the configured roots can be opened; do not use the server's own tests/fixtures folder.
 - To learn a concept, read the resource eae://concepts/<name> (overview, adapter, datatype, basic-fb,
   composite-fb, subapp, function, cat, system, hmi-dotnet, ehmi, folders, library).
 - eae_explain explains any type, application instance, HMI canvas/symbol or device.
