@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE FBType SYSTEM "../LibraryElement.dtd">
+<FBType GUID="00000000-0000-0000-0000-00000000c1c1" Name="E_CYCLE" Comment="Periodic (cyclic) Generation of an Event (synthetic test fixture 26.0.0.7)" Namespace="IEC61499.Standard">
+  <Identification Standard="61499-1" />
+  <InterfaceList>
+    <EventInputs>
+      <Event Name="START"><With Var="DT" /></Event>
+      <Event Name="STOP" />
+    </EventInputs>
+    <EventOutputs>
+      <Event Name="EO" />
+    </EventOutputs>
+    <InputVars>
+      <VarDeclaration Name="DT" Type="TIME" Comment="Period between events" />
+    </InputVars>
+  </InterfaceList>
+</FBType>

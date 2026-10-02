@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Colors xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://tempuri.org/Colors.xsd">
+  <Normal Name="CanvasBackColor" R="230" G="230" B="230" Description="$System.Color.CanvasBackColor.Description" />
+  <Normal Name="GroupBoxBackColor" R="200" G="200" B="200" Description="$System.Color.GroupBoxBackColor.Description" />
+  <Normal Name="TextBoxBackColor" R="255" G="255" B="255" Description="$System.Color.TextBoxBackColor.Description" />
+  <Normal Name="TextBoxPenColor" R="200" G="200" B="200" Description="$System.Color.TextBoxPenColor.Description" />
+  <Normal Name="TrackerScaleColor" R="150" G="150" B="150" Description="$System.Color.TrackerScaleColor.Description" />
+  <Normal Name="TrackerTextColor" R="130" G="130" B="130" Description="$System.Color.TrackerTextColor.Description" />
+  <Normal Name="TrackerValueColor" R="0" G="168" B="231" Description="$System.Color.TrackerValueColor.Description" />
+  <Normal Name="ButtonInnerBorderColor" R="90" G="90" B="90" Description="$System.Color.ButtonInnerBorderColor.Description" />
+  <Normal Name="LabelTextColor" R="100" G="100" B="100" Description="$System.Color.LabelTextColor.Description" />
+  <Normal Name="TrackerLineBackColor" R="200" G="200" B="200" Description="$System.Color.TrackerLineBackColor.Description" />
+  <Normal Name="TrackerScaleDisabledColor" R="180" G="180" B="180" Description="$System.Color.TrackerScaleDisabledColor.Description" />
+  <Normal Name="TrackerTextDisabledColor" R="180" G="180" B="180" Description="$System.Color.TrackerTextDisabledColor.Description" />
+  <Normal Name="TrackerValueDisabledColor" R="180" G="180" B="180" Description="$System.Color.TrackerValueDisabledColor.Description" />
+  <Normal Name="ButtonTextColor" R="255" G="255" B="255" Description="$System.Color.ButtonTextColor.Description" />
+  <Normal Name="TextBoxTextColor" R="90" G="90" B="90" Description="$System.Color.TextBoxTextColor.Description" />
+  <Normal Name="CheckBoxTextColor" R="70" G="70" B="70" Description="$System.Color.CheckBoxTextColor.Description" />
+  <Normal Name="CheckBoxTextDisabledColor" R="180" G="180" B="180" Description="$System.Color.CheckBoxTextDisabledColor.Description" />
+  <Normal Name="TextBoxTextDisabledColor" R="180" G="180" B="180" Description="$System.Color.TextBoxTextDisabledColor.Description" />
+  <Normal Name="ButtonPenColor" R="110" G="110" B="110" Description="$System.Color.ButtonPenColor.Description" />
+  <Normal Name="ButtonTextColorFalse" R="255" G="255" B="255" Description="$System.Color.ButtonTextColorFalse.Description" />
+  <Normal Name="ButtonTextDisabledColor" R="160" G="160" B="160" Description="$System.Color.ButtonTextDisabledColor.Description" />
+  <Normal Name="CanvasTopologyButtonTextColor" R="150" G="150" B="150" Description="$System.Color.CanvasTopologyButtonTextColor.Description" />
+  <Normal Name="ComboBoxArrowColor" R="110" G="110" B="110" Description="$System.Color.ComboBoxArrowColor.Description" />
+  <Normal Name="ComboBoxArrowDisabledColor" R="180" G="180" B="180" Description="$System.Color.ComboBoxArrowDisabledColor.Description" />
+  <Normal Name="ComboBoxPenColor" R="200" G="200" B="200" Description="$System.Color.ComboBoxPenColor.Description" />
+  <Normal Name="ComboBoxTextColor" R="90" G="90" B="90" Description="$System.Color.ComboBoxTextColor.Description" />
+  <Normal Name="ComboBoxTextDisabledColor" R="180" G="180" B="180" Description="$System.Color.ComboBoxTextDisabledColor.Description" />
+  <Normal Name="FaceplateBackColor" R="230" G="230" B="230" Description="$System.Color.FaceplateBackColor.Description" />
+  <Normal Name="LabelPenColor" R="220" G="220" B="220" Description="$System.Color.LabelPenColor.Description" />
+  <Normal Name="LabelBackColor" R="240" G="240" B="240" Description="$System.Color.LabelBackColor.Description" />
+  <Normal Name="ButtonTextColorTrue" R="255" G="255" B="255" Description="$System.Color.ButtonTextColorTrue.Description" />
+  <Normal Name="ButtonTextColorMouseDown" R="255" G="255" B="255" Description="$System.Color.ButtonTextColorMouseDown.Description" />
+  <Normal Name="CanvasTopologyButtonCurrentTextColor" R="255" G="255" B="255" Description="$System.Color.CanvasTopologyButtonCurrentTextColor.Description" />
+  <Normal Name="FpStyleRectangularHeader3DLineBright" R="200" G="200" B="200" Description="$System.Color.FpStyleRectangularHeader3DLineBright.Description" />
+  <Normal Name="FpStyleRectangularHeader3DLineDark" R="150" G="150" B="150" Description="$System.Color.FpStyleRectangularHeader3DLineDark.Description" />
+  <Normal Name="FpStyleRectangularWindowInnerBorder" R="150" G="150" B="150" Description="$System.Color.FpStyleRectangularWindowInnerBorder.Description" />
+  <Normal Name="FpStyleRectangularWindowOuterBorder" R="130" G="130" B="130" Description="$System.Color.FpStyleRectangularWindowOuterBorder.Description" />
+  <Normal Name="RoundKnobInnerCircleColor" R="0" G="168" B="231" Description="$System.Color.RoundKnobInnerCircleColor.Description" />
+  <Normal Name="RoundKnobInnerCircleDisabledColor" R="180" G="180" B="180" Description="$System.Color.RoundKnobInnerCircleDisabledColor.Description" />
+  <Normal Name="RoundKnobKnobColor" R="210" G="210" B="210" Description="$System.Color.RoundKnobKnobColor.Description" />
+  <Normal Name="RoundKnobNeedleColor" R="110" G="110" B="110" Description="$System.Color.RoundKnobNeedleColor.Description" />
+  <Normal Name="RoundKnobScaleColor" R="130" G="130" B="130" Description="$System.Color.RoundKnobScaleColor.Description" />
+  <Normal Name="RoundKnobScaleDisabledColor" R="180" G="180" B="180" Description="$System.Color.RoundKnobScaleDisabledColor.Description" />
+  <Normal Name="RoundKnobTextColor" R="60" G="60" B="60" Description="$System.Color.RoundKnobTextColor.Description" />
+  <Normal Name="RoundKnobTextDisabledColor" R="180" G="180" B="180" Description="$System.Color.RoundKnobTextDisabledColor.Description" />
+  <Normal Name="ComboBoxBackColor" R="255" G="255" B="255" Description="$System.Color.ComboBoxBackColor.Description" />
+  <Normal Name="CanvasTopologyButtonColor" R="110" G="110" B="110" Description="$System.Color.CanvasTopologyButtonColor.Description" />
+  <Normal Name="FpStyleRectangularHeaderBackground" R="150" G="150" B="150" Description="$System.Color.FpStyleRectangularHeaderBackground.Description" />
+  <Normal Name="FpStyleRectangularLineClose" R="100" G="100" B="100" Description="$System.Color.FpStyleRectangularLineClose.Description" />
+  <Normal Name="FpStyleRectangularTitle" R="100" G="100" B="100" Description="$System.Color.FpStyleRectangularTitle.Description" />
+  <Normal Name="FpStyleRoundTitle" R="100" G="100" B="100" Description="$System.Color.FpStyleRoundTitle.Description" />
+  <Normal Name="FpStyleRoundWindowBorder" R="140" G="140" B="140" Description="$System.Color.FpStyleRoundWindowBorder.Description" />
+  <Normal Name="FpStyleRectangularHeaderLine1" R="140" G="140" B="140" Description="$System.Color.FpStyleRectangularHeaderLine1.Description"/>
+  <Normal Name="FpStyleRectangularHeaderLine2" R="230" G="230" B="230" Description="$System.Color.FpStyleRectangularHeaderLine2.Description" />
+  <Normal Name="FpStyleRectangularWindowBackground" R="230" G="230" B="230" Description="$System.Color.FpStyleRectangularWindowBackground.Description" />
+  <Normal Name="FpStyleRoundHeaderBackground" R="140" G="140" B="140" Description="$System.Color.FpStyleRoundHeaderBackground.Description" />
+  <Normal Name="FpStyleRoundWindowBackground" R="230" G="230" B="230" Description="$System.Color.FpStyleRoundWindowBackground.Description" />
+  <Normal Name="FpStyleRoundHeaderLine" R="114" G="114" B="114" Description="$System.Color.FpStyleRoundHeaderLine.Description"/>
+  <Normal Name="TrendAxisLabelColor" R="120" G="120" B="120" Description="$System.Color.TrendAxisLabelColor.Description" />
+  <Normal Name="TrendAxisTickColor" R="120" G="120" B="120" Description="$System.Color.TrendAxisTickColor.Description" />
+  <Normal Name="TrendBackColor" R="220" G="220" B="220" Description="$System.Color.TrendBackColor.Description" />
+  <Normal Name="TrendGridColor" R="220" G="220" B="220" Description="$System.Color.TrendGridColor.Description"/>
+  <Normal Name="TrendLegendColor" R="120" G="120" B="120" Description="$System.Color.TrendLegendColor.Description"/>
+  <Normal Name="TrendLegendFontColor" R="120" G="120" B="120" Description="$System.Color.TrendLegendFontColor.Description"/>
+  <Normal Name="LedFrameColor" R="200" G="200" B="200" Description="$System.Color.LedFrameColor.Description" />
+  <Normal Name="LedFalseColor" R="60" G="60" B="60" Description="$System.Color.LedFalseColor.Description" />
+  <Normal Name="LedDefaultColor" R="200" G="200" B="200" Description="$System.Color.LedDefaultColor.Description" />
+  <Normal Name="LedBackColor" R="150" G="150" B="150" Description="$System.Color.LedBackColor.Description" />
+  <Normal Name="LedTrueColor" R="0" G="168" B="231" Description="$System.Color.LedTrueColor.Description"/>
+  <Normal Name="TrendAxisColor" R="180" G="180" B="180" Description="$System.Color.TrendAxisColor.Description" />
+  <Normal Name="FpStyleRoundLineClose" R="100" G="100" B="100" Description="$System.Color.FpStyleRoundLineClose.Description" />
+  <Normal Name="ActiveHelpButton" R="100" G="100" B="100" Description="$System.Color.ActiveHelpButton.Description"/>
+  <Normal Name="InactiveHelpButton" R="128" G="128" B="128" Description="$System.Color.InactiveHelpButton.Description" />
+  <Normal Name="RuntimeConnectionNotConnected" R="255" G="255" B="255" A="255" Description="$System.Color.RuntimeConnectionNotConnected.Description" />
+  <Normal Name="RuntimeConnectionConnected" R="70" G="70" B="70" A="255" Description="$System.Color.RuntimeConnectionConnected.Description" />
+</Colors>

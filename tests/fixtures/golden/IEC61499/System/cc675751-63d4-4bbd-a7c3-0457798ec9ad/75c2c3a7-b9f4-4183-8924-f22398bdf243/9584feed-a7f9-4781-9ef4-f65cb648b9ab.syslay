@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Layer xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ID="9584feed-a7f9-4781-9ef4-f65cb648b9ab" Name="Default" Comment="" IsDefault="true" Format="2.0" xmlns="https://www.se.com/LibraryElements">
+  <SubAppNetwork>
+    <FB ID="3811CA558F6E3EFC" Name="CAT1" Type="catTest" Namespace="Main" x="1120" y="700" />
+  </SubAppNetwork>
+</Layer>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE FBType SYSTEM "../LibraryElement.dtd">
+<FBType GUID="87ad43ff-01b8-4846-b338-1a2c9de34680" Name="fbTest" Comment="Basic Function Block Type" Namespace="Main">
+  <Identification Standard="61499-2" />
+  <VersionInfo Organization="Schneider Electric" Version="0.0" Author=" " Date="10/1/2026" Remarks="Template" />
+  <InterfaceList>
+    <EventInputs>
+      <Event ID="CBBAB7627EB79083" Name="INIT" Comment="Initialization Request">
+        <With Var="QI" />
+      </Event>
+      <Event ID="C5791102B0BF17C2" Name="REQ" Comment="Normal Execution Request">
+        <With Var="QI" />
+        <With Var="IN1" />
+        <With Var="IN2" />
+      </Event>
+    </EventInputs>
+    <EventOutputs>
+      <Event ID="4C4F2FBA2DF49B4B" Name="INITO" Comment="Initialization Confirm">
+        <With Var="QO" />
+      </Event>
+      <Event ID="8B23B4F733F00860" Name="CNF" Comment="Execution Confirmation">
+        <With Var="QO" />
+        <With Var="OUT1" />
+        <With Var="OUT2" />
+      </Event>
+    </EventOutputs>
+    <InputVars>
+      <VarDeclaration ID="CFCB7FE2AE7C0040" Name="QI" Type="BOOL" Comment="Input event qualifier" />
+      <VarDeclaration ID="8947402AEBE450A9" Name="IN1" Type="INT" />
+      <VarDeclaration ID="70FEA075D717A101" Name="IN2" Type="INT" />
+    </InputVars>
+    <OutputVars>
+      <VarDeclaration ID="87DEAB23357FEA37" Name="QO" Type="BOOL" Comment="Output event qualifier" />
+      <VarDeclaration ID="EF90B23BEBDCF71D" Name="OUT1" Type="INT" />
+      <VarDeclaration ID="F909E451EFC0FAD1" Name="OUT2" Type="BOOL" />
+    </OutputVars>
+  </InterfaceList>
+  <BasicFB ID="f5e15463-39a8-4192-b2a0-fe4410a554c7">
+    <Attribute Name="FBType.Basic.Algorithm.Order" Value="Init,Calc" />
+    <InternalVars>
+      <VarDeclaration ID="2291C5693DA6F9CF" Name="Counter" Type="INT" />
+    </InternalVars>
+    <ECC>
+      <ECState Name="START" Comment="Initial State" x="552.9412" y="429.4117" />
+      <ECState Name="Init" Comment="Initialization" x="923.5294" y="141.1765">
+        <ECAction Algorithm="Init" Output="INITO" />
+      </ECState>
+      <ECState Name="Run" Comment="Normal execution" x="217.647" y="752.9412">
+        <ECAction Algorithm="Calc" Output="CNF" />
+      </ECState>
+      <ECTransition Source="START" Destination="Init" Condition="INIT" x="732.9771" y="204.6685">
+        <Attribute Name="Configuration.Transaction.BezierPoints" Value="174.7086,53.9848,194.4091,38.66225" />
+      </ECTransition>
+      <ECTransition Source="Init" Destination="START" Condition="1" x="797.5924" y="348.3231" />
+      <ECTransition Source="START" Destination="Run" Condition="REQ" x="446.7404" y="648.6316">
+        <Attribute Name="Configuration.Transaction.BezierPoints" Value="123.1467,156.6527,104.2188,174.9165" />
+      </ECTransition>
+      <ECTransition Source="Run" Destination="START" Condition="1" x="372.8767" y="512.7991" />
+    </ECC>
+    <Algorithm ID="5fbfc0ad-b403-4d70-ae79-f3a629c52989" Name="Init">
+      <ST><![CDATA[QO := QI; 
+Counter := 0;]]></ST>
+    </Algorithm>
+    <Algorithm ID="06b4f115-3f5c-4395-8c1e-42ffa4614576" Name="Calc">
+      <ST><![CDATA[Counter := Counter + 1;
+OUT1 := IN1 + IN2;
+OUT2 := OUT1 > 100;]]></ST>
+    </Algorithm>
+  </BasicFB>
+</FBType>

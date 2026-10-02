@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE FBType SYSTEM "../LibraryElement.dtd">
+<FBType GUID="00000000-0000-0000-0000-00000000d1d1" Name="E_DELAY" Comment="Delayed propagation of an event (synthetic test fixture)" Namespace="IEC61499.Standard">
+  <InterfaceList>
+    <EventInputs>
+      <Event Name="START"><With Var="DT" /></Event>
+      <Event Name="STOP" />
+    </EventInputs>
+    <EventOutputs>
+      <Event Name="EO" />
+    </EventOutputs>
+    <InputVars>
+      <VarDeclaration Name="DT" Type="TIME" />
+    </InputVars>
+  </InterfaceList>
+</FBType>

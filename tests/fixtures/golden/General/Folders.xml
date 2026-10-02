@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Folders xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="EAE_MCP_Golden" Version="1.6.0.0" xmlns="http://www.nxtcontrol.com/IEC61499.xsd">
+  <Folder Type="Composite" Name=".Core">
+    <Items />
+  </Folder>
+  <Folder Type="Composite" Name=".Logic">
+    <Items />
+  </Folder>
+  <Folder Type="SubApp" Name=".Logic">
+    <Items />
+  </Folder>
+  <Folder Type="CAT" Name=".Logic">
+    <Items />
+  </Folder>
+  <Folder Type="Adapter" Name=".Logic">
+    <Items />
+  </Folder>
+  <Folder Type="DataType" Name=".Logic">
+    <Items />
+  </Folder>
+  <Folder Type="SystemDevice" Name="Root">
+    <Items>
+      <item>:.Line1</item>
+    </Items>
+  </Folder>
+  <Folder Type="SystemDevice" Name=".Line1">
+    <Items>
+      <item>42ac64b9-b75e-4884-96b3-c103347b1d7f</item>
+    </Items>
+  </Folder>
+</Folders>

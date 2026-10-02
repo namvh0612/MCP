@@ -1,0 +1,17 @@
+﻿{
+	"objects": [
+		{
+			"type": "WEB.Main.Symbols.catTest.seDefault",
+			"name": "symbol1",
+			"left": 7.88,
+			"top": 13,
+			"width": 151,
+			"height": 102,
+			"tagName": "3811CA558F6E3EFC"
+		}
+	],
+	"background": "CanvasBackColor",
+	"overlay": "Transparent",
+	"width": 1024,
+	"height": 688
+}

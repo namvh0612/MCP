@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DrawingObjects xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://tempuri.org/Colors.xsd">
+  <Brush Name="TrackerHandleBrush" Description="$System.Brush.TrackerHandleBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={248, 248, 248|0};{232, 232, 232|1}]</Value>
+  </Brush>
+  <Brush Name="ButtonFalseBrush" Description="$System.Brush.ButtonFalseBrush.Description">
+    <Value>Solid;[110, 110, 110];[Type=None]</Value>
+  </Brush>
+  <Brush Name="ButtonTrueBrush" Description="$System.Brush.ButtonTrueBrush.Description">
+    <Value>Solid;[0, 168, 231];[Type=None]</Value>
+  </Brush>
+  <Brush Name="ButtonBrush" Description="$System.Brush.ButtonBrush.Description">
+    <Value>Solid;[110, 110, 110];[Type=None]</Value>
+  </Brush>
+  <Brush Name="ButtonSwitchBackgroundBrush" Description="$System.Brush.ButtonSwitchBackgroundBrush.Description">
+    <Value>Solid;[185, 185, 185];[Type=None]</Value>
+  </Brush>
+  <Brush Name="TrackerBrush" Description="$System.Brush.TrackerBrush.Description">
+    <Value>Null</Value>
+  </Brush>
+  <Brush Name="TrackerLineBackgroundBrush" Description="$System.Brush.TrackerLineBackgroundBrush.Description">
+    <Value>Solid;[215, 215, 215];[Type=None]</Value>
+  </Brush>
+  <Brush Name="TrackerHandleDisabledBrush" Description="$System.Brush.TrackerHandleDisabledBrush.Description">
+    <Value>Solid;[180, 180, 180];[Type=VerticalTop: ColorBlend={180, 180, 180|0};{180, 180, 180|1}]</Value>
+  </Brush>
+  <Brush Name="TextBoxReadOnlyBrush" Description="$System.Brush.TextBoxReadOnlyBrush.Description">
+    <Value>Solid;[220, 220, 220];[Type=None]</Value>
+  </Brush>
+  <Brush Name="ButtonSwitchBrush" Description="$System.Brush.ButtonSwitchBrush.Description">
+    <Value>Solid;[110, 110, 110];[Type=None]</Value>
+  </Brush>
+  <Brush Name="CheckBoxBrush" Description="$System.Brush.CheckBoxBrush.Description">
+    <Value>Null</Value>
+  </Brush> 
+  <Brush Name="CanvasTopologyButtonBrush" Description="$System.Brush.CanvasTopologyButtonBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={245, 245, 245|0};{235, 235, 235|1}]</Value>
+  </Brush>
+  <Brush Name="CanvasTopologyButtonCurrentBrush" Description="$System.Brush.CanvasTopologyButtonCurrentBrush.Description">
+    <Value>Solid;[0, 168, 231];[Type=None]</Value>
+  </Brush>
+  <Brush Name="CanvasTopologyRoseBrush" Description="$System.Brush.CanvasTopologyRoseBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={245, 245, 245|0};{235, 235, 235|1}]</Value>
+  </Brush>
+  <Brush Name="CanvasTopologyHeaderBrush" Description="$System.Brush.CanvasTopologyHeaderBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={245, 245, 245|0};{235, 235, 235|1}]</Value>
+  </Brush>
+  <Brush Name="CanvasTopologySeparatorBrush" Description="$System.Brush.CanvasTopologySeparatorBrush.Description">
+    <Value>Solid;[30, 30, 30];[Type=HorizontalRight: ColorBlend={255, 255, 255|0};{255, 255, 255|0.5};{200, 200, 200|0.51};{200, 200, 200|1}]</Value>
+  </Brush>
+  <Brush Name="ComboBoxArrowBackBrush" Description="$System.Brush.ComboBoxArrowBackBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={245, 245, 245|0};{235, 235, 235|1}]</Value>
+  </Brush>
+  <Brush Name="ComboBoxArrowBackDisabledBrush" Description="$System.Brush.ComboBoxArrowBackDisabledBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={245, 245, 245|0};{235, 235, 235|1}]</Value>
+  </Brush>
+  <Brush Name="ComboBoxBrush" Description="$System.Brush.ComboBoxBrush.Description">
+    <Value>Solid;[ComboBoxBackColor];[Type=None]</Value>
+  </Brush>
+  <Brush Name="ComboBoxDisabledBrush" Description="$System.Brush.ComboBoxDisabledBrush.Description">
+    <Value>Solid;[220, 220, 220];[Type=None]</Value>
+  </Brush>
+  <Brush Name="FaceplateBrush" Description="$System.Brush.FaceplateBrush.Description">
+    <Value>Solid;[FaceplateBackColor];[Type=None]</Value>
+  </Brush>
+  <Brush Name="FpStyleRectangularHandleBrush" Description="$System.Brush.FpStyleRectangularHandleBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={245, 245, 245|0};{140, 140, 140|1}]</Value>
+  </Brush>
+  <Brush Name="FpStyleRoundHandleBrush" Description="$System.Brush.FpStyleRoundHandleBrush.Description">
+    <Value>Solid;[230, 230, 230];[Type=VerticalTop: ColorBlend={245, 245, 245|0};{140, 140, 140|1}]</Value>
+  </Brush>
+  <Brush Name="LabelBrush" Description="$System.Brush.LabelBrush.Description">
+    <Value>Null</Value>
+  </Brush>
+  <Brush Name="ButtonPushedBrush" Description="$System.Brush.ButtonPushedBrush.Description">
+    <Value>Solid;[0, 168, 230];[Type=None]</Value>
+  </Brush>
+  <Brush Name="LedColor" Description="$System.Brush.LedColor.Description">
+    <Value>Solid;[90, 90, 90];[Type=None]</Value>
+  </Brush>
+  <Pen Name="ButtonPen" Description="$System.Pen.ButtonPen.Description">
+    <Value>Color=Transparent:Width=0</Value>
+  </Pen>
+  <Pen Name="CanvasTopologyButtonPen" Description="$System.Pen.CanvasTopologyButtonPen.Description">
+    <Value>Color=220, 220, 220:Width=1</Value>
+  </Pen>
+  <Pen Name="TrackerHandlePen" Description="$System.Pen.TrackerHandlePen.Description">
+    <Value>Color=190, 190, 190:Width=1</Value>
+  </Pen>
+  <Pen Name="TrackerLinePen" Description="$System.Pen.TrackerLinePen.Description">
+    <Value>Color=190, 190, 190:Width=1</Value>
+  </Pen>
+  <Pen Name="TrackerPen" Description="$System.Pen.TrackerPen.Description">
+    <Value>Color=Transparent:Width=1</Value>
+  </Pen>
+  <Pen Name="RoundKnobPen" Description="$System.Pen.RoundKnobPen.Description">
+    <Value>Color=White:Width=1</Value>
+  </Pen>
+  <Pen Name="TextBoxPen" Description="$System.Pen.TextBoxPen.Description">
+    <Value>Color=TextBoxPenColor:Width=0</Value>
+  </Pen>
+  <Pen Name="ComboBoxPen" Description="$System.Pen.ComboBoxPen.Description">
+    <Value>Color=ComboBoxPenColor:Width=0</Value>
+  </Pen>
+  <Font Name="ButtonFont" Description="$System.Font.ButtonFont.Description">
+    <Value>Arial, 9pt, style=Bold</Value>
+  </Font>
+  <Font Name="CheckBoxFont" Description="$System.Font.CheckBoxFont.Description">
+    <Value>Arial, 9pt, style=Bold</Value>
+  </Font>
+  <Font Name="RoundKnobFont" Description="$System.Font.RoundKnobFont.Description">
+    <Value>Arial, 9pt</Value>
+  </Font>
+  <Font Name="TextBoxFont" Description="$System.Font.TextBoxFont.Description">
+    <Value>Arial, 9pt</Value>
+  </Font>
+  <Font Name="ComboBoxFont" Description="$System.Font.ComboBoxFont.Description">
+    <Value>Arial, 9pt</Value>
+  </Font>
+  <Font Name="TrackerValueFont" Description="$System.Font.TrackerValueFont.Description">
+    <Value>Arial, 9pt</Value>
+  </Font>
+  <Font Name="TrackerFont" Description="$System.Font.TrackerFont.Description">
+    <Value>Arial, 9pt</Value>
+  </Font>
+</DrawingObjects>

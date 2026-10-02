@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE FBType SYSTEM "../LibraryElement.dtd">
+<FBType GUID="3b3fab1f-ba51-43bb-a6ce-f10b4ecc9ef9" Comment="Composite Function Block Type" Name="cfbTest" Format="2.0" Namespace="Main">
+  <Identification Standard="61499-2" />
+  <VersionInfo Organization="Schneider Electric" Version="0.0" Author=" " Date="10/2/2026" Remarks="template" />
+  <InterfaceList>
+    <EventInputs>
+      <Event ID="13D6AB69689E316D" Name="REQ" Comment="Normal Execution Request">
+        <With Var="X" />
+      </Event>
+    </EventInputs>
+    <EventOutputs>
+      <Event ID="E9ABE070E862D5E9" Name="CNF" Comment="Execution Confirmation">
+        <With Var="Y" />
+      </Event>
+    </EventOutputs>
+    <InputVars>
+      <VarDeclaration ID="E1993B4800D9614B" Name="X" Type="INT" />
+    </InputVars>
+    <OutputVars>
+      <VarDeclaration ID="6D3335EB17C150DB" Name="Y" Type="INT" />
+    </OutputVars>
+  </InterfaceList>
+  <FBNetwork>
+    <FB ID="A18F7D824841FE4E" Name="FB1" Type="fbTest" x="1440" y="920" Namespace="Main">
+      <Parameter Name="$70FEA075D717A101" Value="5" />
+    </FB>
+    <FB ID="B928CB0DDA52358C" Name="FB2" Type="E_DELAY" x="2680" y="980" Namespace="IEC61499.Standard">
+      <Parameter Name="$DT" Value="T#1s" />
+    </FB>
+    <Input ID="13D6AB69689E316D" Name="REQ" x="820" y="992" Type="Event" />
+    <Input ID="E1993B4800D9614B" Name="X" x="840" y="1252" Type="Data" />
+    <Output ID="E9ABE070E862D5E9" Name="CNF" x="3160" y="992" Type="Event" />
+    <Output ID="6D3335EB17C150DB" Name="Y" x="2040" y="1252" Type="Data" />
+    <EventConnections>
+      <Connection Source="$13D6AB69689E316D" Destination="$A18F7D824841FE4E.C5791102B0BF17C2" />
+      <Connection Source="$B928CB0DDA52358C.EO" Destination="$E9ABE070E862D5E9" />
+      <Connection Source="$A18F7D824841FE4E.8B23B4F733F00860" Destination="$B928CB0DDA52358C.START" />
+    </EventConnections>
+    <DataConnections>
+      <Connection Source="$E1993B4800D9614B" Destination="$A18F7D824841FE4E.8947402AEBE450A9" />
+      <Connection Source="$A18F7D824841FE4E.EF90B23BEBDCF71D" Destination="$6D3335EB17C150DB" />
+    </DataConnections>
+  </FBNetwork>
+</FBType>

@@ -1,0 +1,12 @@
+# Copy to eae-mcp.toml and adjust. Every key is optional.
+[project]
+roots = ["C:/EAE"]
+
+[eae]
+version = "26.0"
+library_store = "C:/ProgramData/Schneider Electric/Libraries"
+# catalog_file = "C:/EAE/.eae-mcp/catalog.json"   # use on machines without EAE
+
+[server]
+transport = "stdio"          # "http" for remote clients (requires EAE_MCP_TOKEN unless bound to 127.0.0.1)
+http_bind = "127.0.0.1:8765"

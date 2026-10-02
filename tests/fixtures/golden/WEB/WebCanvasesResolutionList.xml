@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<WebCanvasesResolutionList xmlns="http://www.nxtcontrol.com/IEC61499.xsd" Version="1.6.0.0">
+	<CanvasResolution StartCanvasClass=""
+	                  Width="-1"
+	                  Height="-1"
+	                  WorkAreaWidth="-1"
+	                  WorkAreaHeight="-1"
+	                  Template=""
+	                  Login="true"
+	                  NavigationControl="0"
+	                  CurrentUser="true"
+	                  LanguageButton="true"
+	                  RuntimeConnection="true"
+	                  Logger="false"
+	                  NavigationBar="true"
+                      SideNavigationBar="true"
+	                  NewVersionDeployed="true"
+	                  Exit="false"
+	                  ShowWarningMessage="false"
+	                  WarningText=""
+	                  SiblingButtonCount="5"
+	                  ChildButtonCount="5"
+	                  IsCanvasTopologyPanel="true"
+	                  ResizeBehaviour="None"
+	                  AliasNameToggle="false"
+	                  CanvasButtonHeight="30">
+		<Topology Name="Default"/>
+	</CanvasResolution>
+</WebCanvasesResolutionList>

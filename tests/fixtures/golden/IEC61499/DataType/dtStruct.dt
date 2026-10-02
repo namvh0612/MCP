@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE DataType SYSTEM "../LibraryElement.dtd">
+<DataType Namespace="Main" Name="dtStruct" Comment="IEC61131-3, Table 14#5">
+  <Attribute Name="nxtDataType" Value="RnsWMfuluD/126BLvQqwGkV6QmDNh3dwnLKmeFT5+q+cN9sWJNGV/yJwVCpVSucD1tGLYM4OnBXYgkCt7CDTMTMdcaPdDmWz9Gr9yqb1auO6DhN/811gPwZegzo+YN9HUJM+RBxfMAI=" Context="7983368676019116935" />
+  <Identification Standard="1131-3" />
+  <VersionInfo Organization="Schneider Electric" Version="0.0" Author=" " Date="10/1/2026" Remarks="Template" />
+  <CompilerInfo />
+  <StructuredType>
+    <VarDeclaration Name="A" Type="INT" />
+    <VarDeclaration Name="B" Type="REAL" />
+    <VarDeclaration Name="C" Type="STRING[20]" />
+    <VarDeclaration Name="D" Type="BOOL" />
+  </StructuredType>
+</DataType>

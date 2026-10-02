@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE FBType SYSTEM "../LibraryElement.dtd">
+<FBType GUID="00000000-0000-0000-0000-00000000e1e1" Name="E_PERMIT" Comment="Permissive propagation of an event (synthetic test fixture)" Namespace="IEC61499.Standard">
+  <InterfaceList>
+    <EventInputs>
+      <Event Name="EI"><With Var="PERMIT" /></Event>
+    </EventInputs>
+    <EventOutputs>
+      <Event Name="EO" />
+    </EventOutputs>
+    <InputVars>
+      <VarDeclaration Name="PERMIT" Type="BOOL" />
+    </InputVars>
+  </InterfaceList>
+</FBType>

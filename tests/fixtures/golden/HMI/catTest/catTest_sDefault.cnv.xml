@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Mapping>
+  <EventInputs>
+    <Event Name="REQ">OUT1</Event>
+  </EventInputs>
+  <EventOutputs />
+  <Inputs>
+    <Input Name="OUT1" Type="INT" />
+  </Inputs>
+  <Outputs />
+</Mapping>

@@ -1,0 +1,3 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Device xmlns:xsi = "http://www.w3.org/2001/XMLSchema-instance"
+xmlns="https://www.se.com/LibraryElements" ID="42ac64b9-b75e-4884-96b3-c103347b1d7f" Name="EcoRT_0" Type="Soft_dPAC" x="700" y="700" Namespace="SE.DPAC"/>
