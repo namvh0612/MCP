@@ -24,10 +24,11 @@ class VarSpec(BaseModel):
     initial_value: str | None = None
     array_size: str | None = Field(None, description="e.g. '10' for an array of 10 elements")
     comment: str | None = None
+    namespace: str | None = Field(None, description="Namespace of a library DataType, e.g. 'SE.Agile'")
 
     def to_model(self) -> Var:
         return Var(self.name, self.type, initial_value=self.initial_value, array_size=self.array_size,
-                   comment=self.comment)
+                   comment=self.comment, namespace=self.namespace)
 
 
 class EventSpec(BaseModel):
@@ -204,6 +205,29 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
             [t.to_model() for t in add_transitions or []], [t.to_model() for t in remove_transitions or []],
             actions)
         return change(solution, build, dry_run)
+
+    @mcp.tool(annotations=CREATE)
+    def eae_function_create(name: str, code: str, return_type: str | None = None,
+                            inputs: list[VarSpec] | None = None, outputs: list[VarSpec] | None = None,
+                            inouts: list[VarSpec] | None = None, temp_vars: list[VarSpec] | None = None,
+                            comment: str | None = None, library: str | None = None, dry_run: bool = True,
+                            solution: str | None = None) -> dict:
+        """Create a helper Function (IEC 61131-3 POU, POU/<name>.fct): stateless ST code called from
+        Basic FB algorithms, e.g. `s := FormatValue(Value := x);`. Assign the result to the function
+        name (`<name> := …;`). inouts are VAR_IN_OUT (by reference); array_size "*" accepts arrays of
+        any length (loop with UPPER_BOUND(arr, 1)). temp_vars are locals reset on every call."""
+        conv = lambda xs: [x.to_model() for x in xs or []]  # noqa: E731
+        return change(solution, lambda s: edit.create_function(s, name, code, conv(inputs), conv(outputs),
+                                                               conv(inouts), return_type, conv(temp_vars),
+                                                               comment, library), dry_run)
+
+    @mcp.tool(annotations=MODIFY)
+    def eae_function_update(name: str, code: str | None = None, temp_vars: list[VarSpec] | None = None,
+                            dry_run: bool = True, solution: str | None = None) -> dict:
+        """Replace a Function's ST code and/or its temp variables. The interface is kept; to change
+        inputs/outputs, create a new function (e.g. <name>_v1_1) and switch callers to it."""
+        tv = [x.to_model() for x in temp_vars] if temp_vars is not None else None
+        return change(solution, lambda s: edit.update_function(s, name, code, tv), dry_run)
 
     # -- M3: networks ---------------------------------------------------------------------------
 

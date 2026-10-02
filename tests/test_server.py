@@ -26,13 +26,15 @@ async def test_tools_listed_and_read_only(golden_dir):
                    "eae_net_connect", "eae_net_disconnect", "eae_net_set_param", "eae_map_to_resource", "eae_unmap",
                    "eae_cat_create", "eae_ehmi_canvas_create", "eae_ehmi_place_symbol", "eae_ehmi_remove_object", "eae_opcua_expose",
                    "eae_ehmi_update_object", "eae_cat_add_symbol",
-                   "eae_hmi_canvas_create", "eae_hmi_place_symbol", "eae_hmi_update_object", "eae_hmi_remove_object"}
+                   "eae_hmi_canvas_create", "eae_hmi_place_symbol", "eae_hmi_update_object", "eae_hmi_remove_object",
+                   "eae_function_create", "eae_function_update"}
         assert {t.name for t in tools if not t.annotations.read_only_hint} == writers
         modifying = {t.name for t in tools if t.annotations.destructive_hint}
         assert modifying == {"eae_datatype_update", "eae_fb_update_interface", "eae_basic_upsert_algorithm",
                              "eae_basic_update_ecc", "eae_net_remove_fb", "eae_net_disconnect", "eae_net_set_param",
                              "eae_unmap", "eae_ehmi_remove_object", "eae_opcua_expose",
-                             "eae_ehmi_update_object", "eae_hmi_update_object", "eae_hmi_remove_object"}
+                             "eae_ehmi_update_object", "eae_hmi_update_object", "eae_hmi_remove_object",
+                             "eae_function_update"}
 
 
 async def test_open_and_explain_over_mcp(golden_dir):

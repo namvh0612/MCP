@@ -368,3 +368,98 @@ def replace_datatype(sol: Solution, name: str, dt: DataTypeDef) -> ChangeSet:
 
 
 _ = (new_guid, new_id16)
+
+
+# -- functions (POU) --------------------------------------------------------------------------------
+
+
+def _function_root(name: str, namespace: str, inputs: list[Var], outputs: list[Var], inouts: list[Var],
+                   return_type: str | None, temp_vars: list[Var], code: str, comment: str | None):
+    taken: set[str] = set()
+    seen: set[str] = set()
+    for v in inputs + outputs + inouts + temp_vars:
+        w.check_identifier(v.name, "variable name")
+        if v.name.lower() in seen or v.name.lower() == name.lower():
+            raise EditError(f"Duplicate name '{v.name}' (variables must differ from each other and the function).")
+        seen.add(v.name.lower())
+    root = w._el("POUType", [("GUID", new_guid()), ("Name", name), ("Comment", comment or "Function"),
+                             ("Namespace", namespace)])
+    w._header(root, "1131-3", "Template")
+    itf = w._sub(root, "InterfaceList", [("ReturnValueType", return_type or "")])
+    for tag, vars_ in (("InputVars", inputs), ("OutputVars", outputs), ("InputOutputVars", inouts)):
+        if vars_:
+            sec = w._sub(itf, tag)
+            for v in vars_:
+                sec.append(w.var_element(v, True, taken))
+    body = w._sub(root, "POUBasicFunction")
+    if temp_vars:
+        sec = w._sub(body, "TempVars")
+        for v in temp_vars:
+            sec.append(w.var_element(v, True, taken))
+    alg = w._sub(body, "Algorithm", [("Name", name), ("Comment", "Algorithm")])
+    w._sub(alg, "ST").text = etree.CDATA(code.replace("\r\n", "\n"))
+    return root
+
+
+def _function_warnings(name: str, return_type: str | None, code: str, inouts: list[Var]) -> list[str]:
+    out = []
+    if return_type and not re.search(rf"\b{re.escape(name)}\s*:=", code):
+        out.append(f"warning: the code never assigns the return value ({name} := …).")
+    if not return_type and re.search(rf"\b{re.escape(name)}\s*:=", code):
+        out.append(f"warning: the code assigns {name} but the function has no return type.")
+    for v in inouts:
+        if v.array_size == "*" and "UPPER_BOUND" not in code.upper():
+            out.append(f"info: {v.name} is a variable-length array; use UPPER_BOUND({v.name}, 1) to loop over it.")
+    return out
+
+
+def create_function(sol: Solution, name: str, code: str, inputs: list[Var] | None = None,
+                    outputs: list[Var] | None = None, inouts: list[Var] | None = None,
+                    return_type: str | None = None, temp_vars: list[Var] | None = None,
+                    comment: str | None = None, library: str | None = None) -> ChangeSet:
+    """New IEC 61131-3 function in POU/<name>.fct, exactly like EAE 26 (golden: HexToDecimal)."""
+    _ensure_new_name(sol, name)
+    inputs, outputs, inouts, temp_vars = inputs or [], outputs or [], inouts or [], temp_vars or []
+    if not code.strip():
+        raise EditError("A function needs ST code.")
+    t = target_project(sol, library)
+    cs = ChangeSet(sol.root, f"create function {name}")
+    rel = f"{t.dir}POU/{name}.fct"
+    root = _function_root(name, t.namespace, inputs, outputs, inouts, return_type, temp_vars, code, comment)
+    cs.create(rel, xmlrt.dumps(xmlrt.new_document(root, w.DOCTYPE.format(root="POUType"))))
+    cs.create(f"{t.dir}POU/{name}.doc.xml", w.template("doc.xml"))
+    proj = cs.doc(t.dfbproj)
+    w.add_project_item(proj, "Compile", f"POU\\{name}.fct", [("IEC61499Type", "Function")])
+    w.add_project_item(proj, "None", f"POU\\{name}.doc.xml", [("DependentUpon", f"{name}.fct")])
+    _finish(cs, sol, rel)
+    cs.warnings += _function_warnings(name, return_type, code, inouts)
+    return cs
+
+
+def update_function(sol: Solution, name: str, code: str | None = None, temp_vars: list[Var] | None = None) -> ChangeSet:
+    """Replace a function's ST code and/or its temporary variables; the interface is kept."""
+    td, cs, xf = _type_doc(sol, name, ("function",))
+    cs.description = f"update function {td.qualified_name}"
+    body = child(xf.root, "POUBasicFunction")
+    if body is None:
+        raise EditError(f"{td.name} has no POUBasicFunction body.")
+    if code is not None:
+        alg = child(body, "Algorithm")
+        st = child(alg, "ST") if alg is not None else None
+        if st is None:
+            raise EditError(f"{td.name} has no ST algorithm.")
+        st.text = etree.CDATA(code.replace("\r\n", "\n"))
+    if temp_vars is not None:
+        old = child(body, "TempVars")
+        if old is not None:
+            xmlrt.remove_child(old)
+        if temp_vars:
+            taken = _taken_ids(xf.root)
+            sec = w._el("TempVars", ns=etree.QName(body).namespace)
+            for v in temp_vars:
+                sec.append(w.var_element(v, True, taken))
+            xmlrt.insert_child(body, sec, 0)
+    _finish(cs, sol, td.path)
+    current = code if code is not None else "\n".join(a.text for a in td.algorithms)
+    cs.warnings += _function_warnings(td.name, td.interface.return_type, current, td.interface.inout_vars)
+    return cs
