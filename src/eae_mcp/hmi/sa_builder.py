@@ -549,3 +549,41 @@ def gate(technology: str, name: str, designer_text: str | None, json_data: dict 
 def stamp(now: _dt.datetime | None = None) -> dict[str, str]:
     now = now or _dt.datetime.now()
     return {"DATE": f"{now.month}/{now.day}/{now.year}", "TIME": now.strftime("%I:%M %p").lstrip("0")}
+
+
+# -- draft from the HMI interface --------------------------------------------------------------------
+
+_ALARM = re.compile(r"alarm|alm|fault|trip|prio", re.I)
+_STATE = re.compile(r"state|status|mode|run|open|close|on$|enable|ready|auto", re.I)
+
+
+def suggest(hmi: Interface, title: str) -> dict:
+    """A draft design from the HMI interface plus the engineering data still missing.
+
+    Never invents ranges, limits or state texts: those come from the description or the user.
+    """
+    elements, questions = [], []
+    for v in hmi.input_vars:
+        if v.name in ("QI",):
+            continue
+        t = _base(v.type)
+        if t == "STRING":
+            elements.append({"kind": "text", "var": v.name})
+        elif _ALARM.search(v.name) and t in ("BOOL", "INT", "SINT", "DINT", "USINT", "BYTE", "UINT"):
+            elements.append({"kind": "alarm", "var": v.name, "priority": 2})
+            questions.append(f"{v.name}: alarm priority (1 critical … 4 low)" +
+                             ("" if t == "BOOL" else ", or confirm it carries the priority code 0..4"))
+        elif t == "BOOL" or (_STATE.search(v.name) and t in DOTNET_T and t not in ("REAL", "LREAL")):
+            states = {"false": "Off", "true": "On"} if t == "BOOL" else {}
+            elements.append({"kind": "state", "var": v.name, "states": states, "abnormal": []})
+            questions.append(f"{v.name}: state texts" + (" (default Off/On)" if t == "BOOL" else " for each value")
+                             + " and which states are abnormal")
+        elif t in DOTNET_T:
+            elements.append({"kind": "value", "var": v.name, "unit": None, "range": None, "normal": None,
+                             "limits": None})
+            questions.append(f"{v.name}: unit, span [low, high], normal range, low/high alarm limits")
+    order = {"alarm": 0, "value": 1, "state": 2, "text": 3}
+    elements.sort(key=lambda e: order[e["kind"]])
+    return {"title": title, "elements": elements, "missing": questions,
+            "note": "Fill units/ranges/limits/state texts from the description or ask the engineer; "
+                    "do not guess limits. Then call eae_hmi_symbol_build."}

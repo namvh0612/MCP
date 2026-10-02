@@ -62,3 +62,49 @@ async def test_tool_before_open_is_an_error():
     async with Client(server) as client:
         r = await client.call_tool("eae_summary", {})
         assert r.is_error
+
+
+async def test_description_to_hmi_over_mcp(golden_dir, library_store, tmp_path):
+    """The design_hmi_from_description workflow, tool by tool, as an assistant would run it."""
+    import json
+    import shutil
+
+    root = tmp_path / "plant"
+    shutil.copytree(golden_dir, root)
+    server = create_server(Config(roots=[tmp_path], allow_write=True, library_store=library_store))
+
+    def data(r):
+        assert not r.is_error, r.content[0].text
+        return json.loads(r.content[0].text)
+
+    async with Client(server) as client:
+        assert data(await client.call_tool("eae_open_solution", {"path": str(root)}))
+        hmi_vars = [{"name": "Flow", "type": "REAL"}, {"name": "State", "type": "INT"}, {"name": "Alarm", "type": "INT"}]
+        data(await client.call_tool("eae_cat_create", {
+            "name": "catPump", "hmi_event_inputs": [{"name": "REQ", "with_vars": ["Flow", "State", "Alarm"]}],
+            "hmi_input_vars": hmi_vars, "dry_run": False}))
+        draft = data(await client.call_tool("eae_hmi_design_suggest", {"cat": "catPump", "title": "Pump P-101"}))
+        elements = draft["elements"]
+        for e in elements:  # the assistant fills in what the description says
+            if e["var"] == "Flow":
+                e.update(unit="m3/h", range=[0, 120], normal=[40, 90], limits=[20, 105])
+            if e["var"] == "State":
+                e.update(states={"0": "Stopped", "1": "Running", "2": "Fault"}, abnormal=["2"], priority=1)
+        r = data(await client.call_tool("eae_hmi_symbol_build", {"cat": "catPump", "title": draft["title"],
+                                                                   "elements": elements, "dry_run": False}))
+        assert r.get("written") or r.get("applied") or r
+        for n in ("P101", "P102"):
+            data(await client.call_tool("eae_net_add_fb", {"network": "APP1", "name": n, "type": "catPump",
+                                                            "dry_run": False}))
+            data(await client.call_tool("eae_map_to_resource", {"instance": n, "resource": "EcoRT_0/RES0",
+                                                                 "dry_run": False}))
+        for tech in ("hmi", "ehmi"):
+            data(await client.call_tool("eae_hmi_display_build", {
+                "canvas": "PumpStation", "title": "Pump station", "level": 2, "technology": tech,
+                "device": "EcoRT_0", "sections": [{"title": "Feed pumps", "instances": ["P101", "P102"]}],
+                "dry_run": False}))
+        review = data(await client.call_tool("eae_hmi_review", {"name": "PumpStation", "level": 2}))
+        assert {d["display"] for d in review["displays"]} == {"hmi canvas PumpStation", "ehmi canvas PumpStation"}
+        assert all(f["severity"] != "warning" for d in review["displays"] for f in d["findings"])
+        sym = data(await client.call_tool("eae_hmi_review", {"name": "sSA"}))
+        assert sym["displays"][0]["findings"] == []

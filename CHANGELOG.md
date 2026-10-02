@@ -7,6 +7,11 @@
   knowledge docs `standard-library` (IEC 61499 E_*, EAE runtime blocks, generic templates, path macros) and
   an expanded `function`. Parser now keeps VAR_IN_OUT and variable type namespaces.
 - **Functions:** `eae_function_create` / `eae_function_update` (identical to EAE 26 output).
+- **SA HMI generation:** `eae_hmi_design_suggest`, `eae_hmi_symbol_build`, `eae_hmi_display_build` and the
+  prompt `design_hmi_from_description`: symbols and displays drawn to ISA-101 / High Performance HMI rules
+  (gray graphics, moving analog indicators with normal band and limits, color + shape + number alarm
+  indicators, colors only at runtime when abnormal), for .NET HMI and eHMI. Generated C# compiles against
+  EAE API stubs, TypeScript passes tsc, and every result passes `eae_hmi_review`.
 - **REST clients:** knowledge `rest-client` (SolarPlantDemo ElectricPriceUpdate analysed),
   `eae_rest_client_create` (generated CAT + FBs + function, ST verified with a simulator in tests),
   `eae_http_probe` (opt-in, GET/HEAD, allowed hosts only, token never returned); built-in table of generic FB

@@ -34,6 +34,9 @@ diff first; confirm to write. Do the steps in order.
 | D9 | Move `CAT1` on .NET canvas `Canvas1` to x=200, y=100 | `eae_hmi_update_object` |
 | D10 | Run `eae_validate` on the whole solution | `eae_validate` |
 
+| D11 | Prompt `design_hmi_from_description` with: "catPump: Value is the flow 0–100 m3/h, normal 30–70, low alarm 10, high alarm 90 (high priority)" — Claude runs `eae_hmi_design_suggest` and `eae_hmi_symbol_build` for catPump | `eae_hmi_symbol_build` |
+| D12 | Build display `PumpsSA` (level 2, section "Pumps" with PUMP1) for hmi and for ehmi on EcoRT_0 | `eae_hmi_display_build` |
+
 Before opening EAE, zip `C:\EAE\EAE_MCP_M5` as `M5_before_eae.zip`.
 
 ## 3. Check in EAE
@@ -53,6 +56,10 @@ Open `C:\EAE\EAE_MCP_M5` in EAE 26 and record each result in `notes.txt`:
 | E9 | **Tools › Recheck All** without errors (copy the Output window into `M5_output.txt`) | ☐ |
 | E10 | **HMI › Build** and **eHMI › Build** without errors (append to `M5_output.txt`) | ☐ |
 | E11 | Optional: deploy to the simulator; `Value` appears on both canvases and in an OPC UA client | ☐ |
+| E13 | catPump symbols `sSA` / `seSA` open in their editors (gray card, label, value, span with shaded normal band and limit ticks) | ☐ |
+| E14 | HMI › Build and eHMI › Build compile the generated code-behind (.cnv.cs / .sym.ts) without errors | ☐ |
+| E15 | Runtime (simulator): the pointer moves with Value; above 90 it turns orange and widens; an alarm shows shape + color + number | ☐ |
+| E16 | Displays `PumpsSA` (HMI and eHMI) show the title, the "Pumps" group and PUMP1 | ☐ |
 | E12 | Draw something in `sBig` and `seBig`, Save All, close EAE, zip as `M5_after_eae.zip` | ☐ |
 
 ## 4. Send back

@@ -155,6 +155,25 @@ def create_server(config: Config | None = None) -> MCPServer:
         return run(probe, ws.config, url, method, token, auth, headers)
 
     @mcp.tool(annotations=READ_ONLY)
+    def eae_hmi_design_suggest(cat: str, title: str | None = None, solution: str | None = None) -> dict:
+        """Draft situation-awareness symbol design for a CAT from its HMI interface (IThis inputs):
+        element kind per variable (value / state / alarm / text) and the engineering data still missing
+        (units, spans, normal ranges, alarm limits, state texts). Complete it from the user's description,
+        then call eae_hmi_symbol_build. It never invents limits."""
+        import os as _os
+        from .hmi import sa_builder
+        s = sol(solution)
+        td = run(services.find_type, s, cat)
+        c = s.cats.get(td.qualified_name)
+        if c is None:
+            raise ToolError(f"{td.name} is not a CAT.")
+        rel = _os.path.normpath(f"{c.cfg_file.rsplit('/', 2)[0]}/{c.hmi_interface_file}").replace("\\", "/")
+        hmi = next((t for t in s.types.values() if t.path == rel), None)
+        if hmi is None:
+            raise ToolError(f"{td.name} has no HMI interface.")
+        return sa_builder.suggest(hmi.interface, title or td.name)
+
+    @mcp.tool(annotations=READ_ONLY)
     def eae_search(text: str, limit: int = 50, solution: str | None = None) -> list[dict]:
         """Full-text search over type names, comments, variables and ST algorithm code."""
         return services.search(sol(solution), text, limit)
@@ -315,6 +334,27 @@ def create_server(config: Config | None = None) -> MCPServer:
             "eae_cat_describe). Produce: CAT interface, inner network (Basic FB for logic + IThis HMI "
             "interface), the HMI interface variables and events, and the content of a default .NET "
             "symbol and an eHMI symbol (widgets and their tag bindings)."
+        )
+
+    @mcp.prompt()
+    def design_hmi_from_description(description: str) -> str:
+        """Turn a plain-language description into situation-awareness HMI (symbols + displays), both HMIs."""
+        return (
+            "Design the EAE HMI described below, following ISA-101 / High Performance HMI.\n\n"
+            f"Description:\n{description}\n\n"
+            "Steps (dry run first; show the user the plan before writing):\n"
+            "1. eae_knowledge 'from description to HMI' and 'high performance principles'.\n"
+            "2. List the equipment and signals in the description. Map each equipment to a CAT "
+            "(eae_list kind=cat / eae_library_guide) or create one (eae_cat_create) whose HMI interface "
+            "(IThis) carries every signal to show; add missing signals with eae_fb_update_interface on <Cat>_HMI.\n"
+            "3. For each CAT: eae_hmi_design_suggest, then complete units, spans, normal ranges, alarm limits, "
+            "state texts and priorities from the description. If a value is not given, ASK - never invent limits.\n"
+            "4. eae_hmi_symbol_build (technology both) for each CAT.\n"
+            "5. Make sure the instances exist and are mapped (eae_net_add_fb, eae_map_to_resource).\n"
+            "6. Displays: a level-1 overview if there are several areas, then one level-2 display per area "
+            "(eae_hmi_display_build, once for hmi and once for ehmi with the device).\n"
+            "7. eae_hmi_review on every new display; fix warnings; report the open manual checks "
+            "(trends, faceplates, navigation) to the user."
         )
 
     @mcp.prompt()

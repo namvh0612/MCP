@@ -74,3 +74,40 @@ give level 4 without extra canvases.
 Review rules: HP-01 background, HP-02 static saturated color, HP-03 palette size, HP-04 alarm colors used
 statically, HP-05 images, HP-06 typography, HP-07 text contrast, HP-08 density, HP-09 numbers without
 analog context, HP-10 no trend on level-1/2 displays, NAV-01…03 hierarchy, ALM-01…05 alarm classes.
+
+## From description to HMI (generated, standard-compliant)
+
+eae-mcp draws symbols and displays itself; the assistant only turns the description into a design.
+
+| In the description | Element | Needs |
+|---|---|---|
+| a measurement or setpoint feedback (flow, level, temperature, power, speed) | `value` | unit, span `range`, `normal` band, `limits` (low/high alarm) and their `priority` |
+| a discrete condition (running, open, mode, state code) | `state` | text per value (`'true'/'false'` for BOOL), which values are `abnormal`, priority |
+| an alarm flag or alarm priority code | `alarm` | priority (BOOL) or a 0..4 code variable |
+| a name, tag or message | `text` | — |
+
+Rules applied by the generators (do not override them in the design):
+- static drawing is gray; values, pointers and states are dark gray/black; color is set at runtime only when a
+  value is outside its alarm limits, a state is abnormal or an alarm is active, using the priority color;
+- every alarm indicator = color + shape (▲ critical, ◆ high, ■ medium, ● low) + priority number;
+- values always show their unit and, with a span, a moving analog indicator with the normal band shaded;
+- one font family, three sizes; text contrast ≥ 4.5:1; cards on a light-gray canvas;
+- displays: title, one framed group per area/section, symbols in a grid; ≤ 12 instances on level 1,
+  ≤ 30 on level 2; content must fit the canvas (else split the display).
+
+Workflow: prompt `design_hmi_from_description` → `eae_hmi_design_suggest` (draft + missing data) →
+`eae_hmi_symbol_build` → `eae_hmi_display_build` (hmi, then ehmi) → `eae_hmi_review`.
+Never invent engineering limits: ask when the description does not give them.
+
+Example element list for "Feed pump P-101: flow 0–120 m³/h, normal 40–90, low alarm 20, high alarm 105
+(high priority); state Stopped/Running/Fault (fault critical); run feedback; alarm priority code":
+
+```json
+[{"kind": "alarm", "var": "Alarm"},
+ {"kind": "value", "var": "Flow", "unit": "m3/h", "range": [0, 120], "normal": [40, 90], "limits": [20, 105], "priority": 2},
+ {"kind": "state", "var": "State", "states": {"0": "Stopped", "1": "Running", "2": "Fault"}, "abnormal": ["2"], "priority": 1},
+ {"kind": "state", "var": "Running", "label": "Run", "states": {"true": "On", "false": "Off"}}]
+```
+
+Not generated yet (do in EAE, then re-run `eae_hmi_review`): embedded trends (TrendControl pens), faceplates
+(level 4) and commands (buttons that write to the CAT).

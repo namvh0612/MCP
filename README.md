@@ -87,6 +87,7 @@ interfaces of the system-library types the solution uses. Copy the solution and 
 | `eae_generic_fbs` | Generic FB types (VALFORMAT_…, PERSISTENCE_…): parameters and pins learned from the solution |
 | `eae_knowledge` | Search the built-in knowledge and return only the matching sections |
 | `eae_http_probe` | Try a REST API (GET/HEAD, opt-in per host) and get the JSON fields for a generated client |
+| `eae_hmi_design_suggest` | Draft SA symbol design from a CAT's HMI interface + the engineering data still missing |
 | `eae_hmi_review` | Situation-awareness / High Performance HMI review of canvases, navigation and alarm classes |
 
 ### Write tools (M2–M5)
@@ -115,6 +116,8 @@ this also requires `allow_write = true` under `[project]` (or `EAE_MCP_ALLOW_WRI
 | `eae_opcua_expose` | Expose/unexpose a variable on OPC UA (application layer and mapped resources) |
 | `eae_ehmi_canvas_create` | New eHMI canvas on a device, added to its canvas resolution |
 | `eae_ehmi_place_symbol`, `eae_ehmi_update_object`, `eae_ehmi_remove_object` | Put a CAT instance on an eHMI canvas, move/resize/edit it, remove it |
+| `eae_hmi_symbol_build` | Draw a situation-awareness CAT symbol (.NET + eHMI): values with analog indicators, states, alarm indicators |
+| `eae_hmi_display_build` | Lay out an ISA-101 display: canvas, title, framed sections, CAT symbols in a grid |
 | `eae_hmi_canvas_create` | New .NET HMI canvas, registered and added to a canvas resolution |
 | `eae_hmi_place_symbol`, `eae_hmi_update_object`, `eae_hmi_remove_object` | Put a CAT instance on a .NET HMI canvas, move it or set properties, remove it |
 
@@ -137,7 +140,8 @@ After writing, run **Tools › Check Changes** in EAE.
 
 Resources: `eae://concepts/{overview, adapter, datatype, basic-fb, composite-fb, subapp, function, cat,
 system, hmi-dotnet, ehmi, folders, library, standard-library, hmi-design}`, `eae://solution/summary`, `eae://type/{name}`.
-Prompts: `learn_component`, `review_application`, `design_basic_fb`, `design_cat`, `design_hmi_sa`.
+Prompts: `learn_component`, `review_application`, `design_basic_fb`, `design_cat`, `design_hmi_sa`,
+`design_hmi_from_description`.
 
 ## Safety
 

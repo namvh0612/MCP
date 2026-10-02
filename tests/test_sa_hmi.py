@@ -128,3 +128,18 @@ def test_display_build_both_technologies(plant, library_store):
     with pytest.raises(EditError, match="twice"):
         sa_tools.build_display(_sol(plant, library_store), sa_tools.DisplayDesign(
             "X", "X", [sa_tools.SectionDesign("a", ["P101", "P101"])]), "hmi")
+
+
+def test_suggest_draft_never_invents_limits():
+    draft = sb.suggest(HMI, "Pump")
+    kinds = {e["var"]: e["kind"] for e in draft["elements"]}
+    assert kinds == {"Alarm": "alarm", "Flow": "value", "State": "state", "Running": "state", "Name": "text"}
+    flow = next(e for e in draft["elements"] if e["var"] == "Flow")
+    assert flow["range"] is None and flow["limits"] is None
+    assert any(q.startswith("Flow:") for q in draft["missing"])
+    assert draft["elements"][0]["kind"] == "alarm"  # alarm indicators go first (title row)
+
+
+def test_knowledge_has_description_workflow():
+    hits = services.knowledge_search("from description to HMI", 2)
+    assert any("eae_hmi_design_suggest" in h["text"] for h in hits)
