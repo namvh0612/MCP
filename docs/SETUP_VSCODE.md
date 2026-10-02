@@ -207,5 +207,6 @@ Then restart the MCP server (Step 9.3).
 | `/mcp` shows **eae** failed | Run `.venv\Scripts\eae-mcp.exe --config eae-mcp.toml` in the terminal. Python errors show there; press `Ctrl+C` to stop. Then try the `claude mcp add` command in Step 6 |
 | "outside the configured project roots" | Add the folder to `roots` in `eae-mcp.toml` and restart the server |
 | "Writing is disabled" | Set `allow_write = true` and restart the server (Step 9) |
+| Problems panel: `MSB4019 … SharpDevelop.Build.CSharp.Standard.targets was not found` in `tests/fixtures/…/HMI.csproj` | Harmless. The C# Dev Kit extension tries to build the EAE test projects, which need EAE's build targets. `.vscode/settings.json` disables this (`dotnet.defaultSolution: disable`). Run **Developer: Reload Window** (`Ctrl+Shift+P`) and the error disappears. You can also disable C# Dev Kit for this workspace |
 | Library types show as "not found" | Run `eae_catalog_build` once (Step 7.3) |
 | EAE does not show a change made by the MCP | EAE reloads automatically; if not, close and reopen the solution, then run **Tools › Check Changes** |

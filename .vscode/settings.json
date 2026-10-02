@@ -4,5 +4,13 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestArgs": ["tests"],
   "files.eol": "\n",
-  "files.exclude": { "**/__pycache__": true, ".pytest_cache": true }
+  "files.exclude": { "**/__pycache__": true, ".pytest_cache": true },
+
+  // tests/fixtures holds EAE solutions (.sln/.csproj) as test data. They need EAE's build
+  // targets and must not be loaded by the C# extension (avoids MSB4019 errors).
+  "dotnet.defaultSolution": "disable",
+  "dotnet.automaticallyCreateSolutionInWorkspace": false,
+  "omnisharp.enableMsBuildLoadProjectsOnDemand": true,
+  "files.watcherExclude": { "**/tests/fixtures/**": true },
+  "search.exclude": { "**/tests/fixtures/**": true }
 }
