@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Resource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ID="B46693CF18BE45F0" Name="RES0" Type="EMB_RES_ECO" Namespace="Runtime.Management" x="800" y="800" Format="2.0" xmlns="https://www.se.com/LibraryElements">
-  <FBNetwork>
-    <FB ID="AD6F4C542847B13B" Name="CAT1" Type="catTest" Namespace="Main" Mapping="3811CA558F6E3EFC" x="1120" y="700" />
-  </FBNetwork>
-</Resource>

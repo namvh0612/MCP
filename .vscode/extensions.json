@@ -1,9 +1,0 @@
-{
-  "recommendations": [
-    "ms-python.python",
-    "anthropic.claude-code"
-  ],
-  "unwantedRecommendations": [
-    "ms-dotnettools.csdevkit"
-  ]
-}
