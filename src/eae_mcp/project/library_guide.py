@@ -240,7 +240,7 @@ KNOWN_GENERICS = Path(__file__).resolve().parent.parent / "knowledge" / "generic
 
 
 def known_generics() -> dict[str, dict]:
-    """Generic types learned from sample solutions (scripts/build_generic_table.py); usable in any solution
+    """Generic types learned from sample solutions; usable in any solution
     because EAE derives the concrete type from the parameter string at build time."""
     try:
         return json.loads(KNOWN_GENERICS.read_text(encoding="utf-8"))

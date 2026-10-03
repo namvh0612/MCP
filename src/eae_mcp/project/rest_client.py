@@ -1,4 +1,4 @@
-"""Generate a REST/HTTP client CAT, generalising SolarPlantDemo's `ElectricPriceUpdate` (knowledge/rest-client.md).
+"""Generate a REST/HTTP client CAT, hand-built HTTP over NETIO (knowledge/rest-client.md).
 
 Network of the generated CAT `<Name>`:
 

@@ -417,7 +417,7 @@ def create_function(sol: Solution, name: str, code: str, inputs: list[Var] | Non
                     outputs: list[Var] | None = None, inouts: list[Var] | None = None,
                     return_type: str | None = None, temp_vars: list[Var] | None = None,
                     comment: str | None = None, library: str | None = None) -> ChangeSet:
-    """New IEC 61131-3 function in POU/<name>.fct, exactly like EAE 26 (golden: HexToDecimal)."""
+    """New IEC 61131-3 function in POU/<name>.fct, exactly like EAE 26."""
     _ensure_new_name(sol, name)
     inputs, outputs, inouts, temp_vars = inputs or [], outputs or [], inouts or [], temp_vars or []
     if not code.strip():

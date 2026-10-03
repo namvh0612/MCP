@@ -195,7 +195,7 @@ def _load_iec_project(sol: Solution, proj: SolutionProject) -> None:
             td = next((t for t in sol.types.values() if t.path == prel + (cfg.cat_file or "")), None)
             sol.cats[td.qualified_name if td else cfg.name] = cfg
 
-    # Older CATs (as in SolarPlantDemo) do not register their .cfg with IEC61499Type=CAT.
+    # Older CATs do not register their .cfg with IEC61499Type=CAT.
     for td in list(sol.types.values()):
         if td.kind == "cat" and td.qualified_name not in sol.cats and td.path:
             cfg_path = sol.root / td.path.replace(".fbt", ".cfg")
@@ -230,7 +230,7 @@ def resolve_reference(ref: str, network: Network, sol: Solution, owner: TypeDef 
     """Turn a stored reference (`$<node>.<pin>`, `$<pinId>`, `node.pin`) into names.
 
     `<node>` matches an instance/boundary-pin ID first, then a name. `<pin>` matches the
-    target type's pin ID first, then its name (see GOLDEN_FINDINGS §Reference resolution).
+    target type's pin ID first, then its name.
     """
     body = ref[1:] if ref.startswith("$") else ref
     by_id = {i.id: i for i in network.instances if i.id}

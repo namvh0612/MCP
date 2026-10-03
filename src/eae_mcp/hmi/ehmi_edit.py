@@ -2,7 +2,7 @@
 
 Canvases live per device in WEB/<device id>/ (<Canvas>.cnv.ts, .user.cs, .cnv.json) and are listed in
 WEB/<device id>/WebCanvasesResolutionList.xml. A placed symbol is a .cnv.json object whose `type` is the
-symbol class and whose `tagName` is the ID of the CAT instance in the application layer (golden C8/C9).
+symbol class and whose `tagName` is the ID of the CAT instance in the application layer.
 """
 
 from __future__ import annotations

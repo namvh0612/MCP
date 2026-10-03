@@ -299,7 +299,7 @@ def add_fb(sol: Solution, network: str, name: str, type_name: str, namespace: st
         w._sub(el, "Attribute", [("Name", "Configuration.GenericFBType.InterfaceParams"),
                                  ("Value", td.attributes["Configuration.GenericFBType.InterfaceParams"])])
     if c.kind == "type":
-        # Type networks write x/y before Namespace (golden cfbTest); layers write Namespace first.
+        # Type networks write x/y before Namespace; layers write Namespace first.
         for attr in ("Namespace",):
             value = el.attrib.pop(attr)
             el.set(attr, value)

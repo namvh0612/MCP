@@ -343,7 +343,7 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
                                period: str = "T#5m", endpoint: str | None = None, folder: str | None = ".RestApi",
                                library: str | None = None, dry_run: bool = True,
                                solution: str | None = None) -> dict:
-        """Generate a REST/HTTP client CAT (pattern of SolarPlantDemo ElectricPriceUpdate): a CAT `name`
+        """Generate a REST/HTTP client CAT (hand-built HTTP over the NETIO socket block): a CAT `name`
         with INIT(QI, Token, Endpoint)/REQ -> CNF(Status, fields…) and an HMI interface, plus
         <name>_Request (builds the HTTP request), <name>_Response (status, Content-Length/chunked, JSON
         fields), function <name>_Json, NETIO (TLS socket), E_CYCLE polling every `period` and E_PERMIT.
@@ -362,7 +362,7 @@ def register_write_tools(mcp: MCPServer, ws: services.Workspace, run, sol) -> No
     def eae_agile_cat_create(name: str, signals: list[AgileSignalSpec], logic: str | None = None,
                              class_id: int = 201, folder: str | None = None, dry_run: bool = True,
                              solution: str | None = None) -> dict:
-        """Create an Agile-style CAT (SE.Agile library, as SolarPlantDemo acX): IThis carries only AssetName;
+        """Create an Agile-style CAT (SE.Agile library pattern): IThis carries only AssetName;
         a new logic Basic FB (default fb<Name>) gets one plug aHMI_Indication_<T> per indication and one socket
         aHMI_Control_<T> per control; each signal becomes an HMI_Indication_<T>/HMI_Control_<T> sub-CAT with
         Minimum/Maximum/Units/DecimalPlaces, wired to the logic, on the HMI_INIT chain, with the standard skeleton

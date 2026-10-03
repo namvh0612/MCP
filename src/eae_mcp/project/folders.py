@@ -2,7 +2,7 @@
 
 Folders are per category and named as dotted paths (".Standard.IO"). A category's
 tree is the union of Folders.xml entries and the <Parent> values of its items:
-EAE tolerates the two disagreeing (see GOLDEN_FINDINGS, C7b F5).
+EAE tolerates the two disagreeing.
 """
 
 from __future__ import annotations

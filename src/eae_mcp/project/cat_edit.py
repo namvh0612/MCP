@@ -1,5 +1,5 @@
 """Create CATs (Composite Automation Types) the way EAE 26 does: the IEC 61499 part, the HMI interface SIFB
-(IThis), a .NET HMI symbol and optionally an eHMI (web) symbol. Mirrors the golden `catTest` (C9).
+(IThis), a .NET HMI symbol and optionally an eHMI (web) symbol.
 """
 
 from __future__ import annotations

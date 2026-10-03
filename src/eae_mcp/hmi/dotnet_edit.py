@@ -2,7 +2,7 @@
 
 Canvases are HMI/<Canvas>.cnv.cs (+ .Designer.cs, .resx), registered in HMI.csproj with <Canvas>true</Canvas>
 and listed in HMI/CanvasesResolutionList.xml. A placed CAT symbol is an object of type
-<root>.Symbols.<Cat>.<symbol> whose TagName is the application instance ID (golden C8/C9).
+<root>.Symbols.<Cat>.<symbol> whose TagName is the application instance ID.
 Only InitializeComponent() is edited, through the constrained model in designer.py.
 """
 

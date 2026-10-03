@@ -1,6 +1,6 @@
 """Generate a CAT's .NET HMI support code (<Cat>.event.cs, <Cat>.def.cs) the way EAE 26 does.
 
-Verified by regenerating every CAT of SolarPlantDemo and EAE_MCP_Golden (tests/test_codegen.py).
+Output is identical to what EAE generates.
 """
 
 from __future__ import annotations

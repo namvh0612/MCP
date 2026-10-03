@@ -1,4 +1,4 @@
-"""Create and edit IEC 61499 types exactly the way EAE 26 writes them (see docs/GOLDEN_FINDINGS.md)."""
+"""Create and edit IEC 61499 types exactly the way EAE 26 writes them."""
 
 from __future__ import annotations
 

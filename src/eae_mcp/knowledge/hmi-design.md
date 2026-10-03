@@ -60,7 +60,7 @@ give level 4 without extra canvases.
 - In EAE: alarm classes live in `HMI/Alarms/SystemAlarmClasses.xml` / `AlarmClasses.xml`
   (`<Class Name Prio>` with `State Came/CameNA/GoneNA` colors and a `Shortcut` letter); the review
   checks them (ALM-01…05).
-- **Alarm-word profiles** (SolarPlantDemo convention, read by `eae_hmi_scripts`): the logic packs alarm bits into a
+- **Alarm-word profiles** (a common convention, read by `eae_hmi_scripts`): the logic packs alarm bits into a
   WORD (`AlarmWord.3 := <condition>;`, often with a `(* Bit 3: … *)` comment) and publishes it through an
   `HMI_Indication_Integer` block (`ALMW`); an HMI support class (`*.spt.cs`) maps bit → active text, clear text and
   priority (`Alarm(3, "…", "…")`, `Warning(…)`). The review cross-checks both sides: **ALM-06** a bit the logic sets
@@ -121,7 +121,7 @@ Example element list for "Feed pump P-101: flow 0–120 m³/h, normal 40–90, l
 Commands (setpoints and buttons) follow what EAE/SE.Agile do: a basic setpoint is a `TextBox<T>` bound to the
 output variable (EAE writes it and fires its output event, as SE.Agile `sValueInput` does with `oValue`); a basic
 button calls the symbol's generated `FireEvent_<EVENT>(value)`; an Agile control is written through its bridge,
-`bridge.FireEvent_CNF(value)` (SolarPlantDemo `acSimLogic sControl`), with −/+ steps clamped to the block's
+`bridge.FireEvent_CNF(value)` (as SE.Agile control symbols do), with −/+ steps clamped to the block's
 Minimum/Maximum. Buttons use the theme tokens (`ButtonBrush`, `ButtonFont`, …) of EAE's `DrawnButton`; `confirm`
 asks before sending (ISA-101: confirm actions with significant consequences). Commands are generated for the .NET
 HMI only — the samples show no verified eHMI write API (even SE.Agile's `seValControl` probes several); draw eHMI
@@ -130,8 +130,7 @@ commands in EAE.
 Level 4 (detail) faceplates: `eae_hmi_faceplate_build` draws a .NET faceplate (`fSA`, namespace
 `<Root>.Faceplates.<Cat>`, `HMIFaceplate` with `FaceplateBrush` background and `FaceplateClose = Automatic`, window
 title from `AssetName`, as the SE.Agile faceplates) from the same element list; a click on the generated symbol
-card opens it (`card.OpenFaceplates.Add(new OpenFaceplate("fSA", MouseButtonType.Click))`, as SolarPlantDemo
-`sDefault`). Keep the symbol to what level 1–2 needs; put limits, setpoints and commands on the faceplate.
+card opens it (`card.OpenFaceplates.Add(new OpenFaceplate("fSA", MouseButtonType.Click))`, as EAE symbols do). Keep the symbol to what level 1–2 needs; put limits, setpoints and commands on the faceplate.
 
 Not generated yet (do in EAE, then re-run `eae_hmi_review`): embedded trends (TrendControl pens) and eHMI
 faceplates.
@@ -140,7 +139,7 @@ faceplates.
 
 `eae_hmi_review` classifies every CAT and display (`styles`, `cat_reviews`, `style` per document).
 
-| | Basic style | Agile style (SE.Agile library, SolarPlantDemo) |
+| | Basic style | Agile style (SE.Agile library) |
 |---|---|---|
 | Where signals live | IThis (CAT HMI interface) variables | one sub-CAT **HMI block** per signal: `HMI_Indication_Real/Bool/Integer/String`, `HMI_Control_*`, `ModeSelector`, `DA`/`DIA`/`FIP` |
 | IThis | all displayed signals | usually only `AssetName` |

@@ -8,5 +8,5 @@ An adapter type bundles **events and data in both directions** into one connecta
   - Composite/CAT: `<AdapterInputs>` / `<AdapterOutputs>` containing `<Adapter Name Type Namespace/>`, plus a boundary pin `<Input|Output Type="Adapter"/>` in the network.
 - Connections are in `<AdapterConnections>`, one line instead of many event + data wires. Adapter pins are referenced by **name**.
 
-## Typical use (SolarPlantDemo)
-`BroadcasterGrid_v1_0` has an adapter output `ISocket : aGrid_v1_0`; `ListenerGrid_v1_0` has an adapter input `IPlug : aGrid_v1_0`. The CAT `acPPC_v1_0` connects its basic FB's plugs to listeners so one equipment publishes its state to others.
+## Typical use (SE.Agile pattern)
+`BroadcasterGrid_v1_0` has an adapter output `ISocket : aGrid_v1_0`; `ListenerGrid_v1_0` has an adapter input `IPlug : aGrid_v1_0`. The CAT `acPlant_v1_0` connects its basic FB's plugs to listeners so one equipment publishes its state to others.

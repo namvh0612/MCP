@@ -222,7 +222,7 @@ def create_server(config: Config | None = None) -> MCPServer:
     def eae_cat_describe(name: str, solution: str | None = None) -> dict:
         """Everything about a CAT: interface, network, HMI interface (values to/from HMI),
         sub-CATs, .NET HMI and eHMI symbols with their bindings, and all files.
-        name: the CAT type (e.g. 'acPPC_v1_0') or an application instance of it (e.g. 'PPC001')."""
+        name: the CAT type (e.g. 'catPump') or an application instance of it (e.g. 'PUMP1')."""
         s = sol(solution)
         return run(services.cat_describe, s, ws, name)
 

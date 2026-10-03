@@ -4,7 +4,7 @@ Learned from the library itself, not hard-coded: a block CAT offers a *bridge* s
 - .NET: `sValChanged`, an invisible symbol (only Execute accessors) exposing `Val` (+ `ValMinimum`,
   `ValMaximum`, `ValUnits`, `ValDecimalPlaces` when the block has them) and `event EventHandler OnValChanged`;
 - eHMI: `seValChanged` / `seValControl`, an invisible runtime symbol with `setValueChangedHandler(handler)`.
-A parent symbol embeds the bridge with `TagName = <sub-CAT path>` and draws the value itself (SolarPlantDemo acX).
+A parent symbol embeds the bridge with `TagName = <sub-CAT path>` and draws the value itself (SE.Agile pattern).
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class Bridge:
 
     @property
     def control(self) -> bool:
-        """HMI_Control_* blocks: the bridge also writes (FireEvent_CNF(value), as SolarPlantDemo acSimLogic)."""
+        """HMI_Control_* blocks: the bridge also writes (FireEvent_CNF(value), as SE.Agile control symbols do)."""
         return self.block.startswith("HMI_Control_")
 
     @property

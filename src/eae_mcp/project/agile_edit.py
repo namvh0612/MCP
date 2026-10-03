@@ -1,8 +1,8 @@
-"""Agile-style CATs (SE.Agile library, SolarPlantDemo `acX`): signals as HMI block sub-CATs wired to the logic.
+"""Agile-style CATs (SE.Agile library pattern): signals as HMI block sub-CATs wired to the logic.
 
-Learned from SolarPlantDemo `acPPC_v1_0`:
+The pattern of SE.Agile application CATs:
 
-- the logic is a Basic FB (`fbPPC_v1_0`) with one adapter per signal: a **plug** `aHMI_Indication_<T>_v1_0`
+- the logic is a Basic FB (`fb<Name>`) with one adapter per signal: a **plug** `aHMI_Indication_<T>_v1_0`
   for each indication (logic → HMI) and a **socket** `aHMI_Control_<T>_v1_0` for each control (HMI → logic);
 - each signal is a sub-CAT `HMI_Indication_<T>_v1_0` / `HMI_Control_<T>_v1_0` named like the signal; the logic
   plug connects to the block's `Indication` socket, the block's `Control` plug to the logic socket;
@@ -36,7 +36,7 @@ from .types import child, children, local, parse_type_element
 AGILE = "SE.Agile"
 KINDS = ("indication", "control")
 TYPES = {"real": "REAL", "bool": "BOOL", "integer": "INT", "string": "STRING"}
-CLASS_ID_APPLICATION = 201  # every acX of SolarPlantDemo registers with ClassId 201
+CLASS_ID_APPLICATION = 201  # application CATs register with ClassId 201
 
 
 @dataclass
@@ -157,7 +157,7 @@ def _subcat(cfg: xmlrt.XmlFile | None, name: str, type_name: str, namespace: str
 
 
 def _column(c: Container, kind: str, default_x: float) -> tuple[float, float]:
-    """Indications stack right of the logic, controls left of it (as in acPPC)."""
+    """Indications stack right of the logic, controls left of it (SE.Agile layout)."""
     blocks = [e for e in _instances(c) if e.get("Type", "").startswith(f"HMI_{kind.capitalize()}_")]
     if not blocks:
         return default_x, 2180.0
@@ -220,7 +220,7 @@ def st_hints(signals: list[AgileSignal]) -> list[str]:
     for s in signals:
         if s.kind == "indication":
             out.append(f"{s.name}: in an algorithm `{s.name}.Output := <{s.iec_type} value>;` then emit `{s.name}.SET` "
-                       "(ECAction Output or, as SolarPlantDemo does, only when the value changed)")
+                       "(ECAction Output, or only when the value changed)")
         else:
             out.append(f"{s.name}: transition condition `{s.name}.ONCHANGE`, read `{s.name}.Input`; "
                        f"write back with `{s.name}.Output` + `{s.name}.SET`")

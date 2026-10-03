@@ -2,63 +2,33 @@
 
 ## Unreleased
 
-- **SA faceplates:** `eae_hmi_faceplate_build` draws a level-4 .NET faceplate from a design (values, states, alarms,
-  setpoints, commands), titled by AssetName, and links it to the CAT's SA symbol (click on the card opens it).
+- **Agile CATs:** `eae_agile_cat_create` builds an SE.Agile-style CAT (IThis = AssetName, logic Basic FB with one
+  plug/socket per signal, HMI_Indication/HMI_Control blocks with Min/Max/Units, initialization skeleton and HMI_INIT
+  chain); `eae_agile_signal_add` extends an existing one. Basic FBs can declare Sockets/Plugs.
+- **Situation-awareness HMI:** `eae_hmi_design_suggest`, `eae_hmi_symbol_build`, `eae_hmi_faceplate_build`,
+  `eae_hmi_display_build` and the prompt `design_hmi_from_description` draw symbols, faceplates and displays to
+  ISA-101 / High Performance HMI rules (gray graphics, analog indicators with normal band and limits, color + shape +
+  number alarm indicators, color only when abnormal), for basic and Agile CATs, with setpoints and command buttons on
+  the .NET HMI.
+- **HMI review:** `eae_hmi_review` (HP-01…10, NAV-01…03, ALM-01…10, binding and style checks BIND-01, STY-01, AG-01/02,
+  BS-01, plus manual checks); `eae_hmi_scripts` and `eae_alarm_profile_add` for alarm-word profiles in HMI support
+  classes.
+- **REST clients:** `eae_http_probe` (opt-in, GET/HEAD, allowed hosts only, token never returned) and
+  `eae_rest_client_create` (generated CAT, request/response FBs, JSON extraction function, TLS socket).
+- **Library and functions:** `eae_library_guide`, `eae_generic_fbs` (generic FB types usable in any solution),
+  `eae_knowledge`; `eae_function_create` / `eae_function_update`.
 
-- **Alarm-word profiles:** `eae_hmi_scripts` lists HMI support classes and reads alarm-word profiles
-  (`AlarmDefinition[]` arrays), cross-checked with the bits the logic sets (`AlarmWord.N := …`): ALM-06…10 (found in
-  SolarPlantDemo: fbOwnLoad bit 5 "Energy measurement invalid" has no text, the Grid profile describes bit 2 that
-  fbGrid never sets). `eae_alarm_profile_add` appends texts in the file's layout; `eae_hmi_review` includes these.
+## 0.5.0
 
-- **HMI commands:** SA symbols can carry operator actions (.NET HMI): `setpoint` (entry on an IThis output
-  variable, or −/+ steps on an Agile HMI_Control_Real/Integer block) and `command` buttons (fire an IThis output
-  event, or write true/false/toggle/an integer to an Agile control block), with optional confirmation.
-  `eae_hmi_design_suggest` drafts them from output events and control blocks.
+- **.NET HMI:** create canvases, place CAT symbols, move/update/remove objects.
+- **CATs and eHMI:** create CATs like EAE's "New CAT"; add symbols/faceplates; sub-CAT bookkeeping; IThis changes
+  regenerate code and mappings; OPC UA expose/unexpose; eHMI canvases and symbol placement.
+- **Networks:** Composite and SubApp creation, add/remove FBs, connect/disconnect, parameters, resource mapping.
 
-- **Agile CATs:** `eae_agile_cat_create` builds an SE.Agile-style CAT (IThis = AssetName, logic Basic FB with
-  one plug/socket per signal, HMI_Indication/HMI_Control blocks with Min/Max/Units, GetAssetName →
-  InitComponent → EVENTCHAIN skeleton, HMI_INIT chain), `eae_agile_signal_add` extends an existing one. Basic
-  FBs can now declare Sockets/Plugs and emit adapter events (`X.SET`); builders can share one change set.
+## 0.2.0
 
-- **Library knowledge:** `eae_library_guide` (ranked drill-down), `eae_generic_fbs` (generic FB registry with
-  pins learned from connections; add generic FBs by template + parameters), `eae_knowledge` (section search),
-  knowledge docs `standard-library` (IEC 61499 E_*, EAE runtime blocks, generic templates, path macros) and
-  an expanded `function`. Parser now keeps VAR_IN_OUT and variable type namespaces.
-- **Functions:** `eae_function_create` / `eae_function_update` (identical to EAE 26 output).
-- **HMI styles:** `eae_hmi_review` tells basic (IThis bindings) and Agile (SE.Agile HMI blocks embedded by
-  sub-CAT path) CATs and displays apart and checks every binding (BIND-01 found stale bindings in
-  SolarPlantDemo acBESS1). `eae_hmi_symbol_build` also draws **Agile** symbols: elements bound to HMI block
-  paths embed the block bridges (`sValChanged` / `seValChanged`, learned from the library) and take units,
-  decimals and span from the block on .NET; `eae_hmi_design_suggest` drafts Agile CATs from their (nested)
-  blocks. HP-09 no longer counts invisible Agile bridges as number displays.
-- **SA HMI generation:** `eae_hmi_design_suggest`, `eae_hmi_symbol_build`, `eae_hmi_display_build` and the
-  prompt `design_hmi_from_description`: symbols and displays drawn to ISA-101 / High Performance HMI rules
-  (gray graphics, moving analog indicators with normal band and limits, color + shape + number alarm
-  indicators, colors only at runtime when abnormal), for .NET HMI and eHMI. Generated C# compiles against
-  EAE API stubs, TypeScript passes tsc, and every result passes `eae_hmi_review`.
-- **REST clients:** knowledge `rest-client` (SolarPlantDemo ElectricPriceUpdate analysed),
-  `eae_rest_client_create` (generated CAT + FBs + function, ST verified with a simulator in tests),
-  `eae_http_probe` (opt-in, GET/HEAD, allowed hosts only, token never returned); built-in table of generic FB
-  types (`knowledge/generic_types.json`) so NETIO etc. can be added to any solution.
-- **HMI design:** knowledge doc `hmi-design` (Endsley SA, ISA-101 hierarchy, High Performance HMI, ISA-18.2),
-  `eae_hmi_review` (HP-01…10, NAV-01…03, ALM-01…05 + manual checks), prompt `design_hmi_sa`.
+- Create/edit Adapter, DataType, Basic FB; `eae_validate`; dry-run diffs, backups, audit log.
 
-## 0.5.0 — 2026-10-02
+## 0.1.0
 
-Write support for every component, pending acceptance in EAE 26 (docs/ACCEPTANCE_M5.md).
-
-- **M5 .NET HMI:** create canvases, place CAT symbols (bound by instance ID), move/update/remove objects
-  through a constrained `InitializeComponent()` code model that round-trips every EAE-written file.
-- **M4 CAT and eHMI:** create CATs like EAE's "New CAT" (IThis, `.cfg`, companions, .NET + eHMI symbols,
-  generated `.event.cs`/`.def.cs` byte-identical to EAE's); add symbols/faceplates; sub-CAT bookkeeping;
-  IThis changes regenerate code and mappings; OPC UA expose/unexpose; eHMI canvases and symbol placement.
-- **M3 networks:** Composite and SubApp creation, add/remove FBs, connect/disconnect, parameters,
-  resource mapping.
-
-## 0.2.0 — 2026-10-02
-
-- **M2:** create/edit Adapter, DataType, Basic FB; `eae_validate`; dry-run diffs, backups, audit log.
-
-## 0.1.0 — 2026-10-02
-
-- **M1:** read-only server: solution index, library catalog, explain/trace, HMI/eHMI readers, knowledge layer.
+- Read-only server: solution index, library catalog, explain/trace, HMI/eHMI readers, knowledge layer.

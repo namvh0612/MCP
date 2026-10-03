@@ -61,7 +61,7 @@ class Workspace:
                 if solution in (key, sol.sln.name, sol.sln.stem, sol.root.name):
                     return sol
             if not Path(solution).expanduser().exists() or not Path(solution).is_absolute():
-                # A bare name such as 'EAE_MCP_Golden': look it up under the configured roots.
+                # A bare name such as 'MyPlant': look it up under the configured roots.
                 matches = [s for s in list_solutions(self) if s["name"] == solution
                            or Path(s["path"]).name == solution]
                 if len(matches) == 1:

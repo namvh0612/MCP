@@ -1,4 +1,4 @@
-"""Expose (or un-expose) a variable to OPC UA the way EAE 26 does (golden C8).
+"""Expose (or un-expose) a variable to OPC UA the way EAE 26 does.
 
 EAE writes the exposure twice, as an `Exposed` attribute keyed by a dotted path of IDs:
 - in the application layer's opcua.xml (`UID` = application ID, path starts with the layer FB ID),

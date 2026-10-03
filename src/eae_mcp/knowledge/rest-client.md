@@ -1,10 +1,10 @@
-# REST/HTTP client in EAE (pattern from SolarPlantDemo `ElectricPriceUpdate`)
+# REST/HTTP client in EAE (hand-built HTTP over NETIO)
 
-EAE has no ready-made HTTP client block in this sample: the CAT builds HTTP/1.1 by hand on top of the
+EAE has no ready-made HTTP client block: a CAT builds HTTP/1.1 by hand on top of the
 generic socket block **NETIO** (Runtime.IoCommon). The pattern works for any REST API that returns a small
 JSON body.
 
-## Network (CAT `Main.ElectricPriceUpdate`, folder `.RestApi`)
+## Network of a typical REST client CAT (folder `.RestApi`)
 
 ```
 REQ ─► DNSHostQuery ──CNF_IP(IPAddress='TCPS:;<ip>:443')──► PackageBuilder ──Package──► NETIO (HTTP)
@@ -30,18 +30,16 @@ PackageHandler.CNF(rows) ─► PackageFilter ─► CNF ─► IThis (HMI) + ad
 Exchange: `INIT` (QI=TRUE) opens → `INITO`/`QO`; `REQ` sends `SD`; each `IND` carries `RD`/`RD_LEN`; reply
 `ACK` to receive the next part. With `Connection: close` the server ends the exchange.
 
-## Limits and caveats seen in the sample
+## Limits and caveats of this pattern
 
 - Sizes are fixed: request ≤ 512 chars, one chunk ≤ 1024 B, whole response ≤ 4096 B, body ≤ 2024 B;
   larger answers fail with status -4. Ask the API for small pages/fields only.
 - JSON is parsed by hand for one response shape; a change in the API breaks it (consider the generic
   `JSON_PARSER` template: SET_PATH/PARSE → valueOut${CNT}).
-- The API key is an FB **parameter in plain text** inside the `.fbt` (and in every export/zip). Prefer a
+- Never store an API key as an FB **parameter in plain text** in the `.fbt` (it ends up in every export/zip). Prefer a
   value injected at runtime (offline parameter / OPC UA / secured storage) and keep keys out of source control.
 - DNS server and port are hard-coded (8.8.8.8:53); on plant networks use the site DNS or a fixed IP.
-- `PackageBuilder` computes "now − 15 min" by hand: between 01:00 and 01:14 the hour becomes 23 instead
-  of 0 (`IF hour <= 0` should be `< 0`), and between 00:00 and 00:14 the date is not moved back a day.
-  Subtracting `T#15m` from `CURRENT_DT()` before `SPLIT_DT` avoids both.
+- Do date arithmetic on `DT` values (subtract `T#…` before `SPLIT_DT`) instead of by hand on hours/days.
 - No retry/backoff beyond the 5-minute cycle; HTTP status ≥ 300 just yields no data.
 
 ## Making a new REST client with eae-mcp
@@ -51,10 +49,9 @@ Exchange: `INIT` (QI=TRUE) opens → `INITO`/`QO`; `REQ` sends `SD`; each `IND` 
 2. `eae_rest_client_create name=… host=… path=… fields=[…] period=T#5m` (dry run first) generates:
    CAT `<name>` (INIT(QI, Token, Endpoint)/REQ → CNF(Status, fields) + IThis HMI interface, folder
    `.RestApi`), `<name>_Request`, `<name>_Response`, function `<name>_Json`, NETIO (TLS, SNI), E_CYCLE,
-   E_PERMIT — the network of the sample, with standard ECC branching instead of EventVariables.
+   E_PERMIT — the network above, with standard ECC branching instead of EventVariables.
 3. Set `Token` at runtime (never in the type), `Endpoint` to `'TCPS:;<ip>:443'` if NETIO needs an IP, map
-   the instance and build. The generated ST is exercised in tests by an ST simulator (chunked and
-   Content-Length answers split into NETIO-sized pieces), but it still needs one compile/run in EAE.
+   the instance and build. Compile and run it once in EAE.
 
 Extraction rule (`<name>_Json`): each dotted key is searched after the previous one; `occurrence` picks the
 n-th match of the last key, so `price` + occurrence 2 reads the second `"price"` in the body. Strings are

@@ -1,9 +1,9 @@
 """Tell the two HMI styles of EAE CATs apart and check their bindings.
 
 **Basic style** — the CAT's HMI interface (IThis) carries the signals; widgets of its symbols bind with
-`TagName = <IThis variable>` (catTest, ElectricPriceUpdate, the HMI_* blocks themselves).
+`TagName = <IThis variable>` (simple CATs, the HMI_* blocks themselves).
 
-**Agile style** (SE.Agile library / SolarPlantDemo) — IThis carries little (usually only `AssetName`); every
+**Agile style** (SE.Agile library) — IThis carries little (usually only `AssetName`); every
 signal is a sub-CAT *HMI block* (`HMI_Indication_Real/Bool/Integer/String`, `HMI_Control_*`, `ModeSelector`, …)
 with its own interface (Value, Minimum, Maximum, Units, Category/Prefix/Scope via PLOAD) and its own symbols.
 A CAT symbol embeds the blocks' symbols and binds them with `TagName = <sub-CAT path>` (`I`, or through nested

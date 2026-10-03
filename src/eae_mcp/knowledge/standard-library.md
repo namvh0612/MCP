@@ -31,7 +31,7 @@ Rules of thumb:
 - E_PERMIT/E_SWITCH take their data input sampled at the event: wire the BOOL with the same event chain
   that updates it, or the previous value is used.
 
-## EAE runtime blocks (inferred from pins and usage in SolarPlantDemo; confirm with `eae_get`)
+## EAE runtime blocks (inferred from pins and usage; confirm with `eae_get`)
 
 | Block (namespace) | Pins | Purpose |
 |---|---|---|

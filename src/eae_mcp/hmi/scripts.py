@@ -1,7 +1,7 @@
 """HMI support classes (`*.spt.cs`, `<SupportClass>true</SupportClass>` in HMI.csproj) and alarm-word profiles.
 
 Support classes are plain C# shared by symbols and canvases (themes, helpers, event logs). eae-mcp lists them and
-reads one convention found in SolarPlantDemo: **alarm-word profiles**. The logic packs alarm bits into a WORD
+reads one common convention: **alarm-word profiles**. The logic packs alarm bits into a WORD
 (`AlarmWord.3 := <condition>;`) and publishes it through an `HMI_Indication_Integer` block (`ALMW.Output :=
 WORD_TO_INT(AlarmWord)`); a support class maps each bit to texts and a priority:
 
@@ -235,7 +235,7 @@ def add_profile_entries(sol: Solution, profile: str, entries: list[tuple[int, st
     first = re.search(r"\n([ \t]*)\w+\s*\(", body)
     indent = first.group(1) if first else "\t\t\t"
     inner = re.search(r"\(\s*\n([ \t]*)\d", body)
-    multi = inner is not None  # SolarPlantDemo writes one argument per line
+    multi = inner is not None  # one argument per line
     arg = inner.group(1) if multi else ""
     stripped = body.rstrip()
     lead = body[:len(stripped)]

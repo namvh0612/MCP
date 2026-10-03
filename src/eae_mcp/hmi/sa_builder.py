@@ -11,12 +11,12 @@ CAT sends to the HMI):
 - text  : label + live string;
 - setpoint : operator entry of a number — basic: a TextBox on an IThis *output* variable (EAE writes it and fires
           the output event that carries it); Agile: the current value of an HMI_Control_Real/Integer block with
-          −/+ step buttons that send `bridge.FireEvent_CNF(value)` (as SolarPlantDemo acSimLogic does);
+          −/+ step buttons that send `bridge.FireEvent_CNF(value)` (as SE.Agile control blocks are written);
 - command  : a button — basic: fires an IThis output event (`FireEvent_<EVENT>(value)`); Agile: writes `value`
           (true/false/toggle or an integer) to an HMI_Control_Bool/Integer block; optional confirmation dialog.
           Commands are generated for .NET HMI only (no verified eHMI write API in the samples).
 
-Widgets and code follow what EAE itself writes (learned from SolarPlantDemo/golden): static graphics are
+Widgets and code follow what EAE itself writes (learned from EAE-written files): static graphics are
 gray, colors are only set at runtime by generated code, so the result passes eae_hmi_review.
 """
 
@@ -499,7 +499,7 @@ def dotnet_designer(header: str, ns: str, sym: str, boxes: list[Box], types: dic
                     bridges: dict | None = None, faceplate: bool = False, open_faceplate: str | None = None) -> str:
     prelude, sections, fields = _dotnet_sections(boxes, types, bridges)
     if open_faceplate:
-        # A click on the symbol card opens the faceplate (as SolarPlantDemo sDefault: rectBtn.OpenFaceplates).
+        # A click on the symbol card opens the faceplate (OpenFaceplates, as EAE symbols do).
         for name, lines in sections:
             if name == "card":
                 at = next(i for i, ln in enumerate(lines) if ".Pen = " in ln)
@@ -766,7 +766,7 @@ def ehmi_objects(boxes: list[Box], types: dict[str, str], bridges: dict | None =
                         "width": b.w, "height": 18, "text": b.text, "fontSize": st.SIZE_TEXT, "fontFamily": st.FONT,
                         "fontStyle": "normal", "fontWeight": "bold", "textColor": _jc(st.TEXT)})
         elif b.kind == "exec" and b.var in bridges:
-            # Agile bridge: invisible library symbol bound to the sub-CAT (as in SolarPlantDemo acX seDefault).
+            # Agile bridge: invisible library symbol bound to the sub-CAT (SE.Agile pattern).
             out.append({"type": bridges[b.var].web_class, "name": n, "left": 0, "top": 0, "width": 1, "height": 1,
                         "tagName": bridges[b.var].path})
         elif b.kind == "exec":
