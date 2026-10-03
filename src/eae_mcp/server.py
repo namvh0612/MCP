@@ -13,19 +13,22 @@ from . import __version__, safety, services
 from .config import Config
 
 INSTRUCTIONS = """\
-Tools for understanding EcoStruxure Automation Expert (EAE) 26 solutions (IEC 61499).
+Tools for understanding and editing EcoStruxure Automation Expert (EAE) 26 solutions (IEC 61499):
+types, networks, CATs, the System (devices, resources, mapping, OPC UA), .NET HMI and eHMI.
 Start with eae_list_solutions / eae_open_solution, then eae_summary.
-Every tool takes an optional `solution`: the solution name (e.g. 'EAE_MCP_Golden') or its folder path.
-Only solutions under the configured roots can be opened; do not use the server's own tests/fixtures folder.
-- To learn a concept, read the resource eae://concepts/<name> (overview, adapter, datatype, basic-fb,
-  composite-fb, subapp, function, cat, system, hmi-dotnet, ehmi, folders, library).
-- eae_explain explains any type, application instance, HMI canvas/symbol or device.
-- eae_trace follows HMI canvas → instance → CAT → sub-CATs → algorithms.
-- eae_show_component_files lists every file a component consists of (a CAT spans ~20 files).
-Write tools (eae_adapter_create, eae_datatype_create, eae_basic_create, eae_fb_update_interface,
-eae_basic_upsert_algorithm, eae_basic_update_ecc, eae_datatype_update) default to dry_run=true and
-return a diff; writing needs allow_write in the server config. Run eae_validate after changes.
-Names are accepted everywhere; IDs are resolved and generated internally.
+Every tool takes an optional `solution`: the solution name (e.g. 'MyPlant') or its folder path.
+Only solutions under the configured roots can be opened.
+- Learn a concept: resource eae://concepts/<name> (overview, adapter, datatype, basic-fb, composite-fb,
+  subapp, function, cat, system, hmi-dotnet, ehmi, folders, library, standard-library, rest-client,
+  hmi-design) or eae_knowledge '<topic>' for just the matching sections.
+- Understand: eae_explain (any type, instance, HMI document, device), eae_trace (canvas → instance → CAT →
+  algorithms), eae_cat_describe, eae_system_describe, eae_hmi_describe, eae_show_component_files.
+- Reuse before creating: eae_library_guide, eae_generic_fbs.
+- Write tools default to dry_run=true and return a diff; show it to the user and write with dry_run=false
+  only after they agree. Writing needs allow_write in the server config. Run eae_validate after changes.
+- HMI: eae_hmi_design_suggest → eae_hmi_symbol_build / eae_hmi_faceplate_build → eae_hmi_display_build →
+  eae_hmi_review. Never invent engineering limits (ranges, alarm limits): ask the user.
+- Names are accepted everywhere; IDs are resolved and generated internally.
 """
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
